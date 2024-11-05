@@ -23,6 +23,8 @@ class Domains:
 
         self.api = self.domain('api')
         self.visit = self.domain('visit')
+        
+        #! There isn't a maintenance or admin domain? 
         self.maintenance = self.domain('maintenance')
         self.admin = self.domain('admin')
 

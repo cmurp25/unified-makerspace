@@ -71,8 +71,10 @@ class Visit(core.Stack):
         self.oai = aws_cloudfront.OriginAccessIdentity(
             self, 'VisitorsOriginAccessIdentity')
 
+        #! Is this the bucket?: beta-visitors-beta-cumakerspacevisitorsconsole547-q37hb9wp4nmk
         self.bucket = aws_s3.Bucket(self, 'cumakerspace-visitors-console')
         self.bucket.grant_read(self.oai)
+        #! VisitorsConsoleDeployment: What is this? destination_bucket? 
         aws_s3_deployment.BucketDeployment(self, 'VisitorsConsoleDeployment',
                                            sources=[
                                                aws_s3_deployment.Source.asset(
