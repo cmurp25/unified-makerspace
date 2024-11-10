@@ -11,13 +11,7 @@ class Database(core.Stack):
 
         #! remove the stage out of the id string, cloudformation already prefixes all 
         #! dependancies with the stack that its part of and that contains the stack stage
-        self.id = 'Database'
-        # self.users_id = f'Database-users-{stage}'
-        # self.old_visits_id = f'Database-visits-{stage}'  # ! remove in next pr
-        # self.visits_id = 'visits'
-        # self.quiz_progress_id = 'quiz_progress'
-        # self.quiz_list_id = "quiz_list"
-        
+        self.id = 'Database'        
         self.users_id = 'users'
         self.visits_id = 'visits'
         self.equipment_id = 'equipment'
@@ -30,12 +24,6 @@ class Database(core.Stack):
         self.dynamodb_visits_table()
         self.dynamodb_equipment_table()
         self.dynamodb_qualifications_table()
-
-        # self.dynamodb_old_table()  # This is the original table
-        # self.dynamodb_visits_table()
-        # self.dynamodb_users_table()
-        # self.dynamodb_quiz_progress_table()
-        # self.dynamodb_quiz_list_table()
 
     def dynamodb_users_table(self):
         """
