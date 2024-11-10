@@ -10,161 +10,244 @@ class Database(core.Stack):
                  stage: str, *, env: core.Environment):
 
         # todo: remove the stage out of the id string, cloudformation already prefixes all dependancies with the stack that its part of and that contains the stack stage
-        self.id = f'Database-{stage}'
-        self.users_id = f'Database-users-{stage}'
-        self.old_visits_id = f'Database-visits-{stage}'  # ! remove in next pr
-        self.visits_id = 'visits'
-        self.quiz_progress_id = 'quiz_progress'
-        self.quiz_list_id = "quiz_list"
+        self.id = 'Database'
+        # self.users_id = f'Database-users-{stage}'
+        # self.old_visits_id = f'Database-visits-{stage}'  # ! remove in next pr
+        # self.visits_id = 'visits'
+        # self.quiz_progress_id = 'quiz_progress'
+        # self.quiz_list_id = "quiz_list"
+        
+        self.users_table = 'users'
+        self.visits_table = 'visits'
+        self.equipment_table = 'equipment'
+        self.qualifications_table = 'qualifications'
 
         super().__init__(
             scope, self.id, env=env, termination_protection=True)
-
-        self.dynamodb_old_table()  # This is the original table
-        self.dynamodb_visits_table()
+        
         self.dynamodb_users_table()
-        self.dynamodb_quiz_progress_table()
-        self.dynamodb_quiz_list_table()
+        self.dynamodb_visits_table()
+        self.dynamodb_equipment_table()
+        self.dynamodb_qualifications_table()
 
-    def dynamodb_old_table(self):
-        """
-        A single-table design DynamoDB table for all makerspace data.
-
-        This table uses the PK/SK key layout described by Rick Houlihan in his
-        DynamoDB talks[1]. This allows us to be flexible moving forward adding
-        new features. It's not ideal for analytics, but we can address that
-        problem when we get there.
-
-        For now, the following data types can be supported with the described
-        schemas:
-
-        Visits:
-
-        - PK = `{date}`
-        - SK = `{username}`
-
-        Visitors:
-
-        - PK = `CLEMSON_STUDENT#{clemson-username}`
-        - SK = `VISITOR_INFORMATION`
-
-        - PK = `NON_STUDENT_VISITOR#{full-email-address}`
-        - SK = `VISITOR_INFORMATION`
-
-        ```python-pseudocode
-        dynamodb.get_item({
-            PartitionKey={
-                'PK': 'CLEMSON_STUDENT#mhall6'
-            },
-            SortKey={
-                'SK': 'VISITOR_INFORMATION'
-            }
-        })
-        ```
-
-        [1]: https://www.youtube.com/watch?v=KYy8X8t4MB8
-        """
-
-        self.old_table = aws_dynamodb.Table(self,
-                                                 self.id,
-                                                 point_in_time_recovery=True,
-                                                 removal_policy=core.RemovalPolicy.RETAIN,
-                                                 sort_key=aws_dynamodb.Attribute(
-                                                     name='SK',
-                                                     type=aws_dynamodb.AttributeType.STRING),
-                                                 partition_key=aws_dynamodb.Attribute(
-                                                     name='PK',
-                                                     type=aws_dynamodb.AttributeType.STRING),
-                                                 billing_mode=aws_dynamodb.BillingMode.PAY_PER_REQUEST,
-                                                 time_to_live_attribute="last_updated")
-
-    def dynamodb_visits_table(self):
-
-        #! remove in next pr
-        self.old_visits_table = aws_dynamodb.Table(self,
-                                               self.old_visits_id,
-                                               point_in_time_recovery=True,
-                                               removal_policy=core.RemovalPolicy.RETAIN,
-                                               partition_key=aws_dynamodb.Attribute(
-                                                   name='username',
-                                                   type=aws_dynamodb.AttributeType.STRING),
-                                               sort_key=aws_dynamodb.Attribute(
-                                                   name='visit_time',
-                                                   type=aws_dynamodb.AttributeType.STRING),
-                                                billing_mode=aws_dynamodb.BillingMode.PAY_PER_REQUEST,
-                                                time_to_live_attribute="last_updated")
-       
-        #! remove in next pr
-        self.export_value(self.old_visits_table.table_name)
-        self.export_value(self.old_visits_table.table_arn)
-
-
-        self.visits_table = aws_dynamodb.Table(self,
-                                               self.visits_id,
-                                               point_in_time_recovery=True,
-                                               removal_policy=core.RemovalPolicy.RETAIN,
-                                               partition_key=aws_dynamodb.Attribute(
-                                                   name='username',
-                                                   type=aws_dynamodb.AttributeType.STRING),
-                                               sort_key=aws_dynamodb.Attribute(
-                                                   name='visit_time',
-                                                   type=aws_dynamodb.AttributeType.NUMBER),
-                                                billing_mode=aws_dynamodb.BillingMode.PAY_PER_REQUEST,
-                                                time_to_live_attribute="last_updated")
+        # self.dynamodb_old_table()  # This is the original table
+        # self.dynamodb_visits_table()
+        # self.dynamodb_users_table()
+        # self.dynamodb_quiz_progress_table()
+        # self.dynamodb_quiz_list_table()
 
     def dynamodb_users_table(self):
+            """
+                Description:
+
+
+                Users:
+
+                    - PK = `{user_id}` : string
+                    - SK = `{timestamp}` : string
+
+                ```python-pseudocode
+                dynamodb.query({
+                    PartitionKey={
+                        'PK': 'cmurp25'
+                    },
+                    SortKey={
+                        'SK': '2024-01-10T13:34:07'
+                    }
+                })
+            """
+                
+
         self.users_table = aws_dynamodb.Table(self,
-                                              self.users_id,
-                                              point_in_time_recovery=True,
-                                              removal_policy=core.RemovalPolicy.RETAIN,
-                                              partition_key=aws_dynamodb.Attribute(
-                                                  name='username',
-                                                  type=aws_dynamodb.AttributeType.STRING),
-                                              billing_mode=aws_dynamodb.BillingMode.PAY_PER_REQUEST,
-                                              time_to_live_attribute="last_updated")
+                                              )
 
-    def dynamodb_quiz_progress_table(self):
+
+    def dynamodb_visits_table(self):
         """
-        This table will hold all users quiz progression.
+                Description:
 
-        Reason for using 2 tables for quiz data (quiz progression and quiz_list): 
-            - Easier to add new quizzes in the future
-            - Makes retrieving all quiz data for a user easier
 
-        schema:
-        - PK = clemson-username
-        - SK = quiz_id
+                Visits:
 
-        """
-        self.quiz_progress_table = aws_dynamodb.Table(self,
-                                                      self.quiz_progress_id,
-                                                      point_in_time_recovery=True,
-                                                      removal_policy=core.RemovalPolicy.RETAIN,
-                                                      partition_key=aws_dynamodb.Attribute(
-                                                          name="username",
-                                                          type=aws_dynamodb.AttributeType.STRING
-                                                      ),
-                                                      sort_key=aws_dynamodb.Attribute(
-                                                          name="quiz_id",
-                                                          type=aws_dynamodb.AttributeType.STRING
-                                                      ),
-                                                      billing_mode=aws_dynamodb.BillingMode.PAY_PER_REQUEST,
-                                                      time_to_live_attribute="last_updated")
+                    - PK = `{user_id}` : string
+                    - SK = `{timestamp}` : string
 
-    def dynamodb_quiz_list_table(self):
-        """
-        This table will hold all quizzes used by the makerspace by quiz_id
+                GSI:
+                    
+                    - PK = `{_ignore}` : string
+                    - SK = `{timestamp}` : string
 
-        schema:
-        - PK = quiz_id
-        """
-        self.quiz_list_table = aws_dynamodb.Table(self,
-                                                  self.quiz_list_id,
-                                                  point_in_time_recovery=True,
-                                                  removal_policy=core.RemovalPolicy.RETAIN,
-                                                  partition_key=aws_dynamodb.Attribute(
-                                                      name="quiz_id",
-                                                      type=aws_dynamodb.AttributeType.STRING
-                                                  ),
-                                                  billing_mode=aws_dynamodb.BillingMode.PAY_PER_REQUEST,
-                                                  time_to_live_attribute="last_updated")
+                ```python-pseudocode
+                dynamodb.query({
+                    PartitionKey={
+                        'PK': 'cmurp25'
+                    },
+                    SortKey={
+                        'SK': '2024-01-10T13:34:07'
+                    }
+                })
+            """
+        
+        self.visits_table = aws_dynamodb.Table(self,
+                                                self.id,
+                                                point_in_time_recovery=True,
+                                                removal_policy=core.RemovalPolicy.RETAIN,
+                                                sort_key=aws_dynamodb.Attribute(
+                                                    name='SK',
+                                                    type=aws_dynamodb.AttributeType.STRING),
+                                                partition_key=aws_dynamodb.Attribute(
+                                                    name='PK',
+                                                    type=aws_dynamodb.AttributeType.STRING),
+                                                billing_mode=aws_dynamodb.BillingMode.PAY_PER_REQUEST,
+                                                time_to_live_attribute="last_updated")
+
+    def dynamodb_equipment_table(self):
+        self.equipment_table = aws_dynamodb.Table(self,
+                                                  )
+
+    def dynamodb_qualifications_table(self):
+        self.qualifications_table = aws_dynamodb.Table(self,
+                                                       )
+
+    # def dynamodb_old_table(self):
+    #     """
+    #     A single-table design DynamoDB table for all makerspace data.
+
+    #     This table uses the PK/SK key layout described by Rick Houlihan in his
+    #     DynamoDB talks[1]. This allows us to be flexible moving forward adding
+    #     new features. It's not ideal for analytics, but we can address that
+    #     problem when we get there.
+
+    #     For now, the following data types can be supported with the described
+    #     schemas:
+
+    #     Visits:
+
+    #     - PK = `{date}`
+    #     - SK = `{username}`
+
+    #     Visitors:
+
+    #     - PK = `CLEMSON_STUDENT#{clemson-username}`
+    #     - SK = `VISITOR_INFORMATION`
+
+    #     - PK = `NON_STUDENT_VISITOR#{full-email-address}`
+    #     - SK = `VISITOR_INFORMATION`
+
+    #     ```python-pseudocode
+    #     dynamodb.get_item({
+    #         PartitionKey={
+    #             'PK': 'CLEMSON_STUDENT#mhall6'
+    #         },
+    #         SortKey={
+    #             'SK': 'VISITOR_INFORMATION'
+    #         }
+    #     })
+    #     ```
+
+    #     [1]: https://www.youtube.com/watch?v=KYy8X8t4MB8
+    #     """
+
+    #     self.old_table = aws_dynamodb.Table(self,
+    #                                              self.id,
+    #                                              point_in_time_recovery=True,
+    #                                              removal_policy=core.RemovalPolicy.RETAIN,
+    #                                              sort_key=aws_dynamodb.Attribute(
+    #                                                  name='SK',
+    #                                                  type=aws_dynamodb.AttributeType.STRING),
+    #                                              partition_key=aws_dynamodb.Attribute(
+    #                                                  name='PK',
+    #                                                  type=aws_dynamodb.AttributeType.STRING),
+    #                                              billing_mode=aws_dynamodb.BillingMode.PAY_PER_REQUEST,
+    #                                              time_to_live_attribute="last_updated")
+
+    # def dynamodb_visits_table(self):
+
+    #     #! remove in next pr
+    #     self.old_visits_table = aws_dynamodb.Table(self,
+    #                                            self.old_visits_id,
+    #                                            point_in_time_recovery=True,
+    #                                            removal_policy=core.RemovalPolicy.RETAIN,
+    #                                            partition_key=aws_dynamodb.Attribute(
+    #                                                name='username',
+    #                                                type=aws_dynamodb.AttributeType.STRING),
+    #                                            sort_key=aws_dynamodb.Attribute(
+    #                                                name='visit_time',
+    #                                                type=aws_dynamodb.AttributeType.STRING),
+    #                                             billing_mode=aws_dynamodb.BillingMode.PAY_PER_REQUEST,
+    #                                             time_to_live_attribute="last_updated")
+       
+    #     #! remove in next pr
+    #     self.export_value(self.old_visits_table.table_name)
+    #     self.export_value(self.old_visits_table.table_arn)
+
+
+    #     self.visits_table = aws_dynamodb.Table(self,
+    #                                            self.visits_id,
+    #                                            point_in_time_recovery=True,
+    #                                            removal_policy=core.RemovalPolicy.RETAIN,
+    #                                            partition_key=aws_dynamodb.Attribute(
+    #                                                name='username',
+    #                                                type=aws_dynamodb.AttributeType.STRING),
+    #                                            sort_key=aws_dynamodb.Attribute(
+    #                                                name='visit_time',
+    #                                                type=aws_dynamodb.AttributeType.NUMBER),
+    #                                             billing_mode=aws_dynamodb.BillingMode.PAY_PER_REQUEST,
+    #                                             time_to_live_attribute="last_updated")
+
+    # def dynamodb_users_table(self):
+    #     self.users_table = aws_dynamodb.Table(self,
+    #                                           self.users_id,
+    #                                           point_in_time_recovery=True,
+    #                                           removal_policy=core.RemovalPolicy.RETAIN,
+    #                                           partition_key=aws_dynamodb.Attribute(
+    #                                               name='username',
+    #                                               type=aws_dynamodb.AttributeType.STRING),
+    #                                           billing_mode=aws_dynamodb.BillingMode.PAY_PER_REQUEST,
+    #                                           time_to_live_attribute="last_updated")
+
+    # def dynamodb_quiz_progress_table(self):
+    #     """
+    #     This table will hold all users quiz progression.
+
+    #     Reason for using 2 tables for quiz data (quiz progression and quiz_list): 
+    #         - Easier to add new quizzes in the future
+    #         - Makes retrieving all quiz data for a user easier
+
+    #     schema:
+    #     - PK = clemson-username
+    #     - SK = quiz_id
+
+    #     """
+    #     self.quiz_progress_table = aws_dynamodb.Table(self,
+    #                                                   self.quiz_progress_id,
+    #                                                   point_in_time_recovery=True,
+    #                                                   removal_policy=core.RemovalPolicy.RETAIN,
+    #                                                   partition_key=aws_dynamodb.Attribute(
+    #                                                       name="username",
+    #                                                       type=aws_dynamodb.AttributeType.STRING
+    #                                                   ),
+    #                                                   sort_key=aws_dynamodb.Attribute(
+    #                                                       name="quiz_id",
+    #                                                       type=aws_dynamodb.AttributeType.STRING
+    #                                                   ),
+    #                                                   billing_mode=aws_dynamodb.BillingMode.PAY_PER_REQUEST,
+    #                                                   time_to_live_attribute="last_updated")
+
+    # def dynamodb_quiz_list_table(self):
+    #     """
+    #     This table will hold all quizzes used by the makerspace by quiz_id
+
+    #     schema:
+    #     - PK = quiz_id
+    #     """
+    #     self.quiz_list_table = aws_dynamodb.Table(self,
+    #                                               self.quiz_list_id,
+    #                                               point_in_time_recovery=True,
+    #                                               removal_policy=core.RemovalPolicy.RETAIN,
+    #                                               partition_key=aws_dynamodb.Attribute(
+    #                                                   name="quiz_id",
+    #                                                   type=aws_dynamodb.AttributeType.STRING
+    #                                               ),
+    #                                               billing_mode=aws_dynamodb.BillingMode.PAY_PER_REQUEST,
+    #                                               time_to_live_attribute="last_updated")
