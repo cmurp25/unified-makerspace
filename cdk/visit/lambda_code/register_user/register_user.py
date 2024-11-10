@@ -2,6 +2,7 @@ import json
 import boto3
 from boto3.dynamodb.conditions import Key
 import os
+import logging
 
 # Not used
 # import pdb
@@ -25,6 +26,10 @@ class RegisterUserFunction():
     """
 
     def __init__(self, original_table, users_table, dynamodbclient):
+        # Sets up CloudWatch logs and sets level to INFO
+        self.logger = logging.getLogger()
+        self.logger.setLevel(logging.INFO)
+        
         if dynamodbclient is None:
             self.dynamodbclient = boto3.client('dynamodb')
         else:
@@ -63,39 +68,45 @@ class RegisterUserFunction():
         Logs a user entry into the users table with the specified attributes.
         """
         
+        self.logger.info('Starting add_user_info function')
+        
         #? Do we want a timestamp variable? 
         # Generate timestamp in EST in the format YYYY-MM-DDTHH:mm:SS
         # timestamp = datetime.now(ZoneInfo("America/New_York")).strftime('%Y-%m-%dT%H:%M:%S')
         
         try:
             user_id = user_info['user_id']
-        except KeyError:
-            return self.bad_request({'Message': 'Missing parameter: user_id'})
+            
+            #? Should we have college acronym collected too? 
+            # dict for entry into the users table
+            user_table_item = {
+                'user_id':              {'S': user_id},
+                'college':              {'S': user_info['college'] or ''},
+                'major':                {'S': user_info['major'] or ''},
+                'undergraduate_class':  {'S': user_info['undergraduate_class'] or ''},
+                'university_status':    {'S': user_info['university_status'] or ''}
+            }
 
-        #? Should we have college acronym collected too? 
-        # dict for entry into the users table
-        user_table_item = {
-            'user_id':              {'S': user_id},
-            'college':              {'S': user_info['college'] or ''},
-            'major':                {'S': user_info['major'] or ''},
-            'undergraduate_class':  {'S': user_info['undergraduate_class'] or ''},
-            'university_status':    {'S': user_info['university_status'] or ''}
-        }
+            #! What are we doing for testing? 
+            # if the json is from a test request it will have this ttl attribute
+            # if "last_updated" in user_info:
+            #     user_table_item['last_updated'] = {"N":str(user_info['last_updated'])}
 
-        #! What are we doing for testing? 
-        # if the json is from a test request it will have this ttl attribute
-        # if "last_updated" in user_info:
-        #     user_table_item['last_updated'] = {"N":str(user_info['last_updated'])}
+            #! Insert items like this or like log_visit.py?
+            user_table_response = self.dynamodbclient.put_item(
+                TableName=self.USERS_TABLE_NAME,
+                Item=user_table_item
+            )  
+            self.logger.info(f'User registration entry sucessfully added, response: {user_table_response}')
 
-        #! Insert items like this or like log_visit.py? (line 132)
-        user_table_response = self.dynamodbclient.put_item(
-            TableName=self.USERS_TABLE_NAME,
-            Item=user_table_item
-        )
-
-        return user_table_response['ResponseMetadata']['HTTPStatusCode']
+            return user_table_response['ResponseMetadata']['HTTPStatusCode']
+        except Exception as e:
+            self.logger.error(f'FAILED -- Error in add_user_info: {str(e)} \n\tCheck to see if user_id is passed in correctly.')
+            raise
 
     def handle_register_user_request(self, request, context):
+        self.logger.info('Handling register user request')
+        
         HEADERS = {
             'Content-Type': 'application/json',
             'Access-Control-Allow-Headers': 'Content-Type',

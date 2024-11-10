@@ -21,6 +21,7 @@ class LogVisitFunction():
     """
 
     def __init__(self, visits_table, users_table, ses_client):
+        # Sets up CloudWatch logs and sets level to INFO
         self.logger = logging.getLogger()
         self.logger.setLevel(logging.INFO)
 
@@ -118,25 +119,32 @@ class LogVisitFunction():
         """
         Logs a visit entry into the visits table with the specified attributes.
         """
+        
+        self.logger.info('Starting addVisistEntry function')
 
-        # Generate timestamp in EST in the format YYYY-MM-DDTHH:mm:SS
-        timestamp = datetime.now(ZoneInfo("America/New_York")).strftime('%Y-%m-%dT%H:%M:%S')
+        try:
+            # Generate timestamp in EST in the format YYYY-MM-DDTHH:mm:SS
+            timestamp = datetime.now(ZoneInfo("America/New_York")).strftime('%Y-%m-%dT%H:%M:%S')
 
-        # Construct the item to be added to the visits table
-        visit_item = {
-            'user_id': {'S': current_user},
-            'timestamp': {'S': timestamp},
-            '_ignore': {'S': '1'},
-            'location': {'S': location}
-        }
+            # Construct the item to be added to the visits table
+            visit_item = {
+                'user_id': {'S': current_user},
+                'timestamp': {'S': timestamp},
+                '_ignore': {'S': '1'},
+                'location': {'S': location}
+            }
 
-        # Record the visit in the visits table
-        visit_response = self.visits.put_item(
-            Item=visit_item
-        )
+            # Record the visit in the visits table
+            visit_response = self.visits.put_item(
+                Item=visit_item
+            )
+            self.logger.info(f'Visit entry added sucessfully, response: {visit_response}')
 
-        # Return the HTTP status code of the response
-        return visit_response['ResponseMetadata']['HTTPStatusCode']
+            # Return the HTTP status code of the response
+            return visit_response['ResponseMetadata']['HTTPStatusCode']
+        except Exception as e:
+            self.logger.error(f'FAILED -- Error in addVisitEntry: {str(e)}')
+            raise
 
     def handle_log_visit_request(self, request, context):
         """
@@ -147,6 +155,8 @@ class LogVisitFunction():
         2. Trigger a registration workflow if this is the first time for that user
         3. Place a visit entry into the table
         """
+        
+        self.logger.info('Handling log visit request')
 
         HEADERS = {
             'Content-Type': 'application/json',

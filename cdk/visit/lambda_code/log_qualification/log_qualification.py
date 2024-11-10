@@ -4,15 +4,19 @@ import boto3
 from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
 import os
+import logging
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
 # Not used
-# import logging
 # import re
 
 class LogQualificationFunction():
     def __init__(self, qualifications_table, users_table):
+        # Sets up CloudWatch logs and sets level to INFO
+        self.logger = logging.getLogger()
+        self.logger.setLevel(logging.INFO)
+        
         if qualifications_table is None:
             # Get the service resource.
             dynamodb = boto3.resource('dynamodb')
@@ -38,26 +42,35 @@ class LogQualificationFunction():
         Logs a qualifications entry into the qualifications table
         with the specified attributes.
         """
+        self.logger.info('Starting addQualificationEntry function')
+        # Use if needed
+        # self.logger.info(f'Received user_info: {user_info}')
 
-        # Generate timestamp in EST in the format YYYY-MM-DDTHH:mm:SS
-        last_updated = datetime.now(ZoneInfo("America/New_York")).strftime('%Y-%m-%dT%H:%M:%S')
-        
-        # Construct the item to be added to the qualifications table
-        qualification_item = {
-            'user_id': {'S': user_info['user_id']},
-            'last_updated': {'S': last_updated},
-            'trainings': {'L': user_info.get('trainings', [])},  # Defaults to empty list if not provided
-            'waivers': {'L': user_info.get('waivers', [])},      # Defaults to empty list if not provided
-            '_ignore': {'S': '1'}
-        }
+        try:
+            # Generate timestamp in EST in the format YYYY-MM-DDTHH:mm:SS
+            last_updated = datetime.now(ZoneInfo("America/New_York")).strftime('%Y-%m-%dT%H:%M:%S')
+            self.logger.info(f'Generated timestamp (var: last_updated): {last_updated}')
+            
+            # Construct the item to be added to the qualifications table
+            qualification_item = {
+                'user_id': {'S': user_info['user_id']},
+                'last_updated': {'S': last_updated},
+                'trainings': {'L': user_info.get('trainings', [])},  # Defaults to empty list if not provided
+                'waivers': {'L': user_info.get('waivers', [])},      # Defaults to empty list if not provided
+                '_ignore': {'S': '1'}
+            }
 
-        # Record the qualification in the qualifications table
-        qualifications_response = self.qualifications.put_item(
-            Item=qualification_item
-        )
+            # Record the qualification in the qualifications table
+            qualifications_response = self.qualifications.put_item(
+                Item=qualification_item
+            )
+            self.logger.info(f'Qualification entry added successfully, response: {qualifications_response}')
 
-        # Return the HTTP status code of the response
-        return qualifications_response['ResponseMetadata']['HTTPStatusCode']
+            # Return the HTTP status code of the response
+            return qualifications_response['ResponseMetadata']['HTTPStatusCode']
+        except Exception as e:
+            self.logger.error(f'FAILED -- Error in addQualificationEntry: {str(e)}')
+            raise
             
     def handle_log_qualification_req(self, request, context):
         """ 
@@ -65,6 +78,8 @@ class LogQualificationFunction():
         This should:
         1. Place qualifications entry into the qualifications table
         """
+        
+        self.logger.info('Handling log qualification request')
         
         HEADERS = {
             'Content-Type': 'application/json',
@@ -91,7 +106,7 @@ class LogQualificationFunction():
         try:
             user_id = body['user_id']
         except KeyError:
-            return bad_request({'Message': 'Missing parameter: user_id'})
+            return bad_request({'Message': f'Missing parameter: user_id \n\tKeyError: {KeyError}'})
             
         status_code = self.addQualificationEntry(body)
         

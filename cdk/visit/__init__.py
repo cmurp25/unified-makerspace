@@ -12,6 +12,7 @@ from aws_cdk import (
 )
 
 from dns import MakerspaceDns
+import logging
 
 class Visit(core.Stack):
     """
@@ -42,6 +43,10 @@ class Visit(core.Stack):
                  zones: MakerspaceDns = None):
 
         super().__init__(scope, 'Visitors', env=env)
+        
+        # Sets up CloudWatch logs and sets level to INFO
+        # self.logger = logging.getLogger()
+        # self.logger.setLevel(logging.INFO)
 
         self.stage = stage
         self.create_dns = create_dns

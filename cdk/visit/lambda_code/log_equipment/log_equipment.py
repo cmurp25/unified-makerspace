@@ -4,11 +4,11 @@ import boto3
 from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
 import os
+import logging
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
 # Not used
-# import logging
 # import re
 
 # Import log_visit for user registration checking
@@ -17,6 +17,10 @@ from ..log_visit import log_visit as LV
 
 class LogEquipmentFunction():
     def __init__(self, equipment_table, users_table):
+        # Sets up CloudWatch logs and sets level to INFO
+        self.logger = logging.getLogger()
+        self.logger.setLevel(logging.INFO)
+        
         if equipment_table is None:
             # Get the service resource.
             dynamodb = boto3.resource('dynamodb')
@@ -43,60 +47,70 @@ class LogEquipmentFunction():
         with the specified attributes.
         """
         
-        # Generate timestamp in EST in the format YYYY-MM-DDTHH:mm:SS
-        timestamp = datetime.now(ZoneInfo("America/New_York")).strftime('%Y-%m-%dT%H:%M:%S')
+        self.logger.info("Starting addEquipmentEntry function")
+        # self.logger.info(f"Received user_info: {user_info}")
         
-        """
-        #! Note: 
-        Do we want to add some logic here to determine which variables we 
-        want to store?
-        
-        Do we want to keep _ignore as '1'? 
-        """
-        # Construct the item to be added to teh visits table
-        equipment_item = {
-            'user_id': {'S': user_info['user_id']},
-            'timestamp': {'S': timestamp},
-            '3d_printer_info': {
-                'M': {
-                    'printer_name': {'S': user_info.get('printer_name', '')},
-                    'print_duration': {'S': user_info.get('print_duration', '')},
-                    'print_mass': {'S': user_info.get('print_mass', '')},
-                    'print_mass_estimate': {'S': user_info.get('print_mass_estimate', '')},
-                    'print_notes': {'S': user_info.get('print_notes', '')},
-                    'print_status': {'S': user_info.get('print_status', '')}
-                }
-            },
-            'advisor_name': {'S': user_info.get('advisor_name', '')},
-            'class_number': {'S': user_info.get('class_number', '')},
-            'department_name': {'S': user_info.get('department_name', '')},
-            'difficulties_notes': {'S': user_info.get('difficulties_notes', '')},
-            'equipment_type': {'S': user_info.get('equipment_type', '')},
-            'faculty_name': {'S': user_info.get('faculty_name', '')},
-            'intern_name': {'S': user_info.get('intern_name', '')},
-            'issue_notes': {'S': user_info.get('issue_notes', '')},
-            'location': {'S': user_info.get('location', '')},
-            'more_colors': {'S': user_info.get('more_colors', '')},
-            'organization_affiliation': {'S': user_info.get('organization_affiliation', '')},
-            'present_makerday': {'S': user_info.get('present_makerday', '')},
-            'print_name': {'S': user_info.get('print_name', '')},
-            'project_name': {'S': user_info.get('project_name', '')},
-            'project_sponsor': {'S': user_info.get('project_sponsor', '')},
-            'project_type': {'S': user_info.get('project_type', '')},
-            'recieved_filament_color': {'S': user_info.get('recieved_filament_color', '')},
-            'referral_source': {'S': user_info.get('referral_source', '')},
-            'requested_colors': {'S': user_info.get('requested_colors', '')},
-            'resin_type': {'S': user_info.get('resin_type', '')},
-            'satisfaction_rate': {'S': user_info.get('satisfaction_rate', '')},
-            '_ignore': {'S': '1'}
-        }
-        
-        equipment_response = self.equipment.put_item(
-            Item=equipment_item
-        )
-        
-        # Return the HTTP status code of the response
-        return equipment_response['ResponseMetadata']['HTTPStatusCode']
+        try:
+            # Generate timestamp in EST in the format YYYY-MM-DDTHH:mm:SS
+            timestamp = datetime.now(ZoneInfo("America/New_York")).strftime('%Y-%m-%dT%H:%M:%S')
+            self.logger.info(f'Generated timestamp: {timestamp}')
+            
+            """
+            #! Note: 
+            Do we want to add some logic here to determine which variables we 
+            want to store?
+            
+            Do we want to keep _ignore as '1'? 
+            """
+            # Construct the item to be added to teh visits table
+            equipment_item = {
+                'user_id': {'S': user_info['user_id']},
+                'timestamp': {'S': timestamp},
+                '3d_printer_info': {
+                    'M': {
+                        'printer_name': {'S': user_info.get('printer_name', '')},
+                        'print_duration': {'S': user_info.get('print_duration', '')},
+                        'print_mass': {'S': user_info.get('print_mass', '')},
+                        'print_mass_estimate': {'S': user_info.get('print_mass_estimate', '')},
+                        'print_notes': {'S': user_info.get('print_notes', '')},
+                        'print_status': {'S': user_info.get('print_status', '')}
+                    }
+                },
+                'advisor_name': {'S': user_info.get('advisor_name', '')},
+                'class_number': {'S': user_info.get('class_number', '')},
+                'department_name': {'S': user_info.get('department_name', '')},
+                'difficulties_notes': {'S': user_info.get('difficulties_notes', '')},
+                'equipment_type': {'S': user_info.get('equipment_type', '')},
+                'faculty_name': {'S': user_info.get('faculty_name', '')},
+                'intern_name': {'S': user_info.get('intern_name', '')},
+                'issue_notes': {'S': user_info.get('issue_notes', '')},
+                'location': {'S': user_info.get('location', '')},
+                'more_colors': {'S': user_info.get('more_colors', '')},
+                'organization_affiliation': {'S': user_info.get('organization_affiliation', '')},
+                'present_makerday': {'S': user_info.get('present_makerday', '')},
+                'print_name': {'S': user_info.get('print_name', '')},
+                'project_name': {'S': user_info.get('project_name', '')},
+                'project_sponsor': {'S': user_info.get('project_sponsor', '')},
+                'project_type': {'S': user_info.get('project_type', '')},
+                'recieved_filament_color': {'S': user_info.get('recieved_filament_color', '')},
+                'referral_source': {'S': user_info.get('referral_source', '')},
+                'requested_colors': {'S': user_info.get('requested_colors', '')},
+                'resin_type': {'S': user_info.get('resin_type', '')},
+                'satisfaction_rate': {'S': user_info.get('satisfaction_rate', '')},
+                '_ignore': {'S': '1'}
+            }
+            
+            equipment_response = self.equipment.put_item(
+                Item=equipment_item
+            )
+            
+            self.logger.info(f'Equipment entry added successfully, response: {equipment_response}')
+            
+            # Return the HTTP status code of the response
+            return equipment_response['ResponseMetadata']['HTTPStatusCode']
+        except Exception as e:
+            self.logger.error(f'FAILED -- Error in addEquipmentEntry: {str(e)}')
+            raise
             
     def handle_log_equipment_request(self, request, context):
         """
@@ -105,6 +119,8 @@ class LogEquipmentFunction():
         1. Verify user is registered?
         2. Place equipment log entry into the table
         """
+        
+        self.logger.info('Handling log equipment request')
 
         HEADERS = {
             'Content-Type': 'application/json',
@@ -131,7 +147,7 @@ class LogEquipmentFunction():
         try:
             user_id = body['user_id']
         except KeyError:
-            return bad_request({'Message': 'Missing parameter: user_id'})
+            return bad_request({'Message': f'Missing parameter: user_id \n\tKeyError: {KeyError}'})
 
         # send user the registration link if not registered
         user_registered = LV.isUserRegistered(user_id)

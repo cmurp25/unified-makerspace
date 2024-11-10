@@ -1,4 +1,4 @@
-
+import logging
 from aws_cdk import (
     core,
     aws_dynamodb
@@ -8,6 +8,9 @@ from aws_cdk import (
 class Database(core.Stack):
     def __init__(self, scope: core.Construct,
                  stage: str, *, env: core.Environment):
+        # Sets up CloudWatch logs and sets level to INFO
+        self.logger = logging.getLogger()
+        self.logger.setLevel(logging.INFO)
 
         #! remove the stage out of the id string, cloudformation already prefixes all 
         #! dependancies with the stack that its part of and that contains the stack stage
@@ -68,18 +71,18 @@ class Database(core.Stack):
 
         Example Query:
             python-pseudocode
-                dynamodb.query({
                 Query the visits table by `user_id` and `timestamp`:
-                    KeyConditionExpression: Key('user_id').eq('{user_id_value}') 
-                                            & Key('timestamp').eq('{timestamp_value}')
-                })
+                    dynamodb.query({
+                        KeyConditionExpression: Key('user_id').eq('{user_id_value}') 
+                                                & Key('timestamp').eq('{timestamp_value}')
+                    })
             
-            Query the TimestampIndex by `_ignore` and `timestamp`
-                dynamodb.query({
-                    IndexName: 'TimestampIndex',
-                    KeyConditionExpression: Key('_ignore').eq('{ignore_value}') & 
-                                            Key('timestamp').eq('{timestamp_value}')
-                })
+                Query the TimestampIndex by `_ignore` and `timestamp`:
+                    dynamodb.query({
+                        IndexName: 'TimestampIndex',
+                        KeyConditionExpression: Key('_ignore').eq('{ignore_value}') & 
+                                                Key('timestamp').eq('{timestamp_value}')
+                    })
         """
         
         self.visits_table = aws_dynamodb.Table(self,
@@ -121,18 +124,18 @@ class Database(core.Stack):
 
         Example Query:
             python-pseudocode
-                dynamodb.query({
                 Query the equipment table by `user_id` and `timestamp`:
-                    KeyConditionExpression: Key('user_id').eq('{user_id_value}') 
-                                            & Key('timestamp').eq('{timestamp_value}')
-                })
+                    dynamodb.query({
+                        KeyConditionExpression: Key('user_id').eq('{user_id_value}') 
+                                                & Key('timestamp').eq('{timestamp_value}')
+                    })
             
-            Query the TimestampIndex by `_ignore` and `timestamp`
-                dynamodb.query({
-                    IndexName: 'TimestampIndex',
-                    KeyConditionExpression: Key('_ignore').eq('{ignore_value}') & 
-                                            Key('timestamp').eq('{timestamp_value}')
-                })
+                Query the TimestampIndex by `_ignore` and `timestamp`:
+                    dynamodb.query({
+                        IndexName: 'TimestampIndex',
+                        KeyConditionExpression: Key('_ignore').eq('{ignore_value}') & 
+                                                Key('timestamp').eq('{timestamp_value}')
+                    })
         """
         
         self.equipment_table = aws_dynamodb.Table(self,
@@ -174,18 +177,18 @@ class Database(core.Stack):
 
         Example Query:
             python-pseudocode
-                dynamodb.query({
                 Query the qualifications table by `user_id` and `last_updated`:
-                    KeyConditionExpression: Key('user_id').eq('{user_id_value}') 
-                                            & Key('last_updated').eq('{last_updated_value}')
-                })
+                    dynamodb.query({
+                        KeyConditionExpression: Key('user_id').eq('{user_id_value}') 
+                                                & Key('last_updated').eq('{last_updated_value}')
+                    })
             
-            Query the TimestampIndex by `_ignore` and `last_updated`
-                dynamodb.query({
-                    IndexName: 'TimestampIndex',
-                    KeyConditionExpression: Key('_ignore').eq('{ignore_value}') & 
-                                            Key('last_updated').eq('{last_updated_value}')
-                })
+                Query the TimestampIndex by `_ignore` and `last_updated`:
+                    dynamodb.query({
+                        IndexName: 'TimestampIndex',
+                        KeyConditionExpression: Key('_ignore').eq('{ignore_value}') & 
+                                                Key('last_updated').eq('{last_updated_value}')
+                    })
         """
         
         self.qualifications_table = aws_dynamodb.Table(self,
