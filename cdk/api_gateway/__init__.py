@@ -7,8 +7,6 @@ from aws_cdk import (
 )
 
 from dns import MakerspaceDns
-from quicksight.quicksight_construct import QuickSightEmbedConstruct
-
 
 class SharedApiGateway(core.Stack):
     """
@@ -37,9 +35,11 @@ class SharedApiGateway(core.Stack):
     """
 
     def __init__(self, scope: core.Construct, stage: str,
-                visitors: aws_lambda.Function, register: aws_lambda.Function, quiz: aws_lambda.Function, *, env: core.Environment, create_dns: bool, zones: MakerspaceDns = None):
+                visitors: aws_lambda.Function, register: aws_lambda.Function, 
+                quiz: aws_lambda.Function, *, env: core.Environment, create_dns: bool, 
+                zones: MakerspaceDns = None):
 
-        super().__init__(scope, f'SharedApiGateway-{stage}', env=env)
+        super().__init__(scope, 'SharedApiGateway', env=env)
 
         self.create_dns = create_dns
         self.zones = zones

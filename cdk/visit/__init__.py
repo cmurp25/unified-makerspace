@@ -32,17 +32,16 @@ class Visit(core.Stack):
 
     def __init__(self, scope: core.Construct,
                  stage: str,
-                 original_table_name: str,
                  users_table_name: str,
                  visits_table_name: str,
-                 quiz_list_table_name: str,
-                 quiz_progress_table_name: str,
+                 equipment_table_name: str,
+                 qualifications_table_name: str,
                  *,
                  env: core.Environment,
                  create_dns: bool,
                  zones: MakerspaceDns = None):
 
-        super().__init__(scope, f'Visitors-{stage}', env=env)
+        super().__init__(scope, 'Visitors', env=env)
 
         self.stage = stage
         self.create_dns = create_dns
@@ -57,12 +56,16 @@ class Visit(core.Stack):
 
         self.domain_name = self.distribution.domain_name if stage == 'Dev' else self.zones.visit.zone_name
 
-        self.log_visit_lambda(
-            original_table_name, visits_table_name, users_table_name, ("https://" + self.domain_name))
-        self.register_user_lambda(
-            original_table_name, users_table_name, ("https://" + self.domain_name))
-        self.quiz_lambda(
-            quiz_list_table_name, quiz_progress_table_name, ("https://" + self.domain_name))
+        self.log_visit_lambda(visits_table_name, users_table_name, ("https://" + self.domain_name))
+        self.register_user_lambda(users_table_name, ("https://" + self.domain_name))
+        self.qualifications_log_lambda(qualifications_table_name, users_table_name, ("https://" + self.domain_name))
+        self.equipment_log_lambda(equipment_table_name, users_table_name, ("https://" + self.domain_name))
+        
+        #! Remove
+        # self.quiz_lambda(
+        #     quiz_list_table_name, quiz_progress_table_name, ("https://" + self.domain_name))
+        
+        #? What are we wanting to do about testing? 
         self.test_api_lambda(env=stage)
 
         
@@ -71,10 +74,8 @@ class Visit(core.Stack):
         self.oai = aws_cloudfront.OriginAccessIdentity(
             self, 'VisitorsOriginAccessIdentity')
 
-        #! Is this the bucket?: beta-visitors-beta-cumakerspacevisitorsconsole547-q37hb9wp4nmk
         self.bucket = aws_s3.Bucket(self, 'cumakerspace-visitors-console')
         self.bucket.grant_read(self.oai)
-        #! VisitorsConsoleDeployment: What is this? destination_bucket? 
         aws_s3_deployment.BucketDeployment(self, 'VisitorsConsoleDeployment',
                                            sources=[
                                                aws_s3_deployment.Source.asset(
@@ -113,8 +114,8 @@ class Visit(core.Stack):
 
         self.distribution = aws_cloudfront.Distribution(
             self, 'VisitorsConsoleCache', **kwargs)
-
-    def log_visit_lambda(self, original_table_name: str, visits_table_name: str, users_table_name: str, domain_name: str):
+    
+    def log_visit_lambda(self, visits_table_name: str, users_table_name: str, domain_name: str):
 
         sending_authorization_policy = aws_iam.PolicyStatement(
             effect=aws_iam.Effect.ALLOW)
@@ -127,17 +128,16 @@ class Visit(core.Stack):
             function_name=core.PhysicalName.GENERATE_IF_NEEDED,
             code=aws_lambda.Code.from_asset('visit/lambda_code/log_visit'),
             environment={
-                'ORIGINAL_TABLE_NAME': original_table_name,
                 'DOMAIN_NAME': domain_name,
                 'VISITS_TABLE_NAME': visits_table_name,
                 'USERS_TABLE_NAME': users_table_name,
             },
             handler='log_visit.handler',
-            runtime=aws_lambda.Runtime.PYTHON_3_9)
+            runtime=aws_lambda.Runtime.PYTHON_3_12)
 
         self.lambda_visit.role.add_to_policy(sending_authorization_policy)
-
-    def register_user_lambda(self, original_table_name: str, users_table_name: str, domain_name: str):
+    
+    def register_user_lambda(self, users_table_name: str, domain_name: str):
 
         self.lambda_register = aws_lambda.Function(
             self,
@@ -145,27 +145,41 @@ class Visit(core.Stack):
             function_name=core.PhysicalName.GENERATE_IF_NEEDED,
             code=aws_lambda.Code.from_asset('visit/lambda_code/register_user'),
             environment={
-                'ORIGINAL_TABLE_NAME': original_table_name,
                 'DOMAIN_NAME': domain_name,
-                'USERS_TABLE_NAME': users_table_name
+                'USERS_TABLE_NAME': users_table_name,
             },
             handler='register_user.handler',
-            runtime=aws_lambda.Runtime.PYTHON_3_9)
+            runtime=aws_lambda.Runtime.PYTHON_3_12)
+    
+    def qualifications_log_lambda(self, qualifications_table_name: str, users_table_name: str, domain_name: str):
         
-    def quiz_lambda(self, quiz_list_table_name: str, quiz_progress_table_name: str, domain_name: str):
-
-        self.lambda_quiz = aws_lambda.Function(
+        self.lambda_qualifications = aws_lambda.Function(
             self,
-            'QuizLambda',
+            'QualificationsLogLambda',
             function_name=core.PhysicalName.GENERATE_IF_NEEDED,
-            code=aws_lambda.Code.from_asset('visit/lambda_code/quiz'),
+            code=aws_lambda.Code.from_asset('visit/lambda_code/log_qualification'),
             environment={
                 'DOMAIN_NAME': domain_name,
-                'QUIZ_LIST_TABLE_NAME': quiz_list_table_name,
-                'QUIZ_PROGRESS_TABLE_NAME': quiz_progress_table_name
+                'USERS_TABLE_NAME': users_table_name,
+                'QUALIFICATIONS_TABLE_NAME': qualifications_table_name,
             },
-            handler='quiz.handler',
-            runtime=aws_lambda.Runtime.PYTHON_3_9)
+            handler='log_qualification.handler',
+            runtime=aws_lambda.Runtime.PYTHON_3_12)
+    
+    def equipment_log_lambda(self, equipment_table_name: str, users_table_name: str, domain_name: str):
+        
+        self.lambda_equipment = aws_lambda.Function(
+            self,
+            'EquipmentLogLambda',
+            function_name=core.PhysicalName.GENERATE_IF_NEEDED,
+            code=aws_lambda.Code.from_asset('visit/lambda_code/log_equipment'),
+            environment={
+                'DOMAIN_NAME': domain_name,
+                'USERS_TABLE_NAME': users_table_name,
+                'EQUIPMENT_TABLE_NAME': equipment_table_name,
+            },
+            handler='log_equipment.handler',
+            runtime=aws_lambda.Runtime.PYTHON_3_12)
         
     def test_api_lambda(self, env: str):
 

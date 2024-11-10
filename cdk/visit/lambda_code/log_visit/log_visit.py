@@ -1,15 +1,18 @@
 import json
-import time
 from pydoc import cli
 import boto3
 from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
 import logging
-import traceback
-import sys
 import os
 import re
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
+# Not used
+# import time
+# import traceback
+# import sys
 
 class LogVisitFunction():
     """
@@ -17,16 +20,9 @@ class LogVisitFunction():
     so we can more easily test with pytest.
     """
 
-    def __init__(self, original_table, visits_table, users_table, ses_client):
+    def __init__(self, visits_table, users_table, ses_client):
         self.logger = logging.getLogger()
         self.logger.setLevel(logging.INFO)
-
-        if original_table is None:
-            dynamodb = boto3.resource('dynamodb')
-            ORIGINAL_TABLE_NAME = os.environ['ORIGINAL_TABLE_NAME']
-            self.original = dynamodb.Table(ORIGINAL_TABLE_NAME)
-        else:
-            self.original = original_table
 
         if visits_table is None:
             # Get the service resource.
@@ -59,7 +55,7 @@ class LogVisitFunction():
         true if the user has registered
         """
         user_table_response = self.users.query(
-            KeyConditionExpression=Key('username').eq(current_user)
+            KeyConditionExpression=Key('user_id').eq(current_user)
         )
         return user_table_response['Count'] != 0
 
@@ -117,41 +113,30 @@ class LogVisitFunction():
         # Display an error if something goes wrong.
         except ClientError as e:
             self.logger.error(e.response['Error']['Message'])
+            
+    def addVisitEntry(self, current_user, location):
+        """
+        Logs a visit entry into the visits table with the specified attributes.
+        """
 
-    def addVisitEntry(self, current_user, location, tool, last_updated):
+        # Generate timestamp in EST in the format YYYY-MM-DDTHH:mm:SS
+        timestamp = datetime.now(ZoneInfo("America/New_York")).strftime('%Y-%m-%dT%H:%M:%S')
 
-        timestamp = int(time.time())
+        # Construct the item to be added to the visits table
+        visit_item = {
+            'user_id': {'S': current_user},
+            'timestamp': {'S': timestamp},
+            '_ignore': {'S': '1'},
+            'location': {'S': location}
+        }
 
-        # record the visit in the old combined table
-        original_response = self.original.put_item(
-            Item={
-                'PK': str(timestamp),
-                'SK': current_user,
-                'tool': tool or ' ',
-                'location': location or ' ',
-                'last_updated': last_updated,
-            },
-        )
-
-        # record the visit in the visits table
+        # Record the visit in the visits table
         visit_response = self.visits.put_item(
-            # PK / Partition Key = Visit Date
-            # SK / Sort Key = Username or Email Address
-
-            Item={
-                'visit_time': timestamp,
-                'username': current_user,
-                'location': location,
-                'tool': tool,
-                'last_updated': last_updated,
-            },
+            Item=visit_item
         )
 
-        if original_response['ResponseMetadata']['HTTPStatusCode'] != visit_response['ResponseMetadata']['HTTPStatusCode']:
-            raise Exception(
-                "One of Original Table or Visit Table update failed.")
-
-        return original_response['ResponseMetadata']['HTTPStatusCode']
+        # Return the HTTP status code of the response
+        return visit_response['ResponseMetadata']['HTTPStatusCode']
 
     def handle_log_visit_request(self, request, context):
         """
@@ -184,11 +169,11 @@ class LogVisitFunction():
         # get the body of the request
         body = json.loads(request.get('body', "{}"))
 
-        # get the users username
+        # get the users user_id
         try:
-            username = body['username']
+            user_id = body['user_id']
         except KeyError:
-            return bad_request({'Message': 'Missing parameter: username'})
+            return bad_request({'Message': 'Missing parameter: user_id'})
 
         # get the users location
         location = None
@@ -197,26 +182,13 @@ class LogVisitFunction():
         except KeyError:
             self.logger.warning('location parameter was not provided')
 
-        # get what tool the user is using
-        tool = None
-        try:
-            tool = body['tool']
-        except KeyError:
-            self.logger.warning('tool parameter was not provided')
-
-        try:
-            last_updated = body['last_updated']
-        except:
-            last_updated = ""
-
         # send user the registration link if not registered
-        user_registered = self.isUserRegistered(username)
+        user_registered = self.isUserRegistered(user_id)
         if not user_registered:
-            self.registrationWorkflow(username)
+            self.registrationWorkflow(user_id)
 
         # add the visit entry
-        status_code = self.addVisitEntry(
-            username, location, tool, last_updated)
+        status_code = self.addVisitEntry(user_id, location)
 
         # Send response
         return {
@@ -228,7 +200,7 @@ class LogVisitFunction():
         }
 
 
-log_visit_function = LogVisitFunction(None, None, None, None)
+log_visit_function = LogVisitFunction(None, None, None)
 
 
 def handler(request, context):

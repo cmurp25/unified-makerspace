@@ -1,37 +1,19 @@
 import json
-import pdb
-import dateutil.tz
 import boto3
 from boto3.dynamodb.conditions import Key
 import os
-import datetime
-import time
-from typing import Tuple
 
+# Not used
+# import pdb
+# import dateutil.tz
+# import time
 
-def process_grad_date(grad_date: str) -> Tuple[str, int]:
-    """
-    Infers the graduation semester and year from grad_date
-    grad_date: str
-        The graduation date in the format 'YYYY-MM-DD'
-    Returns:
-        A tuple of the semester and year.
-    """
-    year = grad_date[:4]
-    month = grad_date[5:7]
-    print(month)
-    if month in ['04', '05', '06']:
-        semester = 'Spring'
-    elif month in ['07', '08', '09']:
-        semester = 'Summer'
-    elif month in ['11', '12', '01']:
-        semester = 'Fall'
-    else:
-        raise ValueError(
-            'Month passed was not April, May, June, July, August, September, November, December or January')
+# For processing graduation date calculation
+# from typing import Tuple
 
-    return semester, year
-
+# For timestamp, if used
+# from datetime import datetime
+# from zoneinfo import ZoneInfo
 
 class RegisterUserFunction():
     """
@@ -61,74 +43,57 @@ class RegisterUserFunction():
                 self.ORIGINAL_TABLE_NAME)
         else:
             self.original = original_table
-
-    def add_user_info(self, user_info):
-
-        # register the user in the old combined table
-        original_response = self.original.put_item(
-            Item={
-                'PK': user_info['username'],
-                'SK': str(datetime.datetime.now()),
-                'firstName': user_info['firstName'],
-                'lastName': user_info['lastName'],
-                'Gender': user_info['Gender'],
-                'DOB': user_info['DOB'],
-                'Position': user_info['UserPosition'],
-                'GradSemester': user_info.get('GradSemester', ' '),
-                'GradYear': user_info.get('GradYear', ' '),
-                'Major': ', '.join(sorted(user_info.get('Major', []))),
-                'Minor': ', '.join(sorted(user_info.get('Minor', []))),
-                'last_updated':user_info.get('last_updated','')
-            },
-        )
-
-        # format Grad_Date if the frontend does not provide the new format
-        if 'Grad_Date' in user_info:
-            # Add the user to the original table
-            grad_sem, grad_year = process_grad_date(user_info['Grad_Date'])
-        else:
-            grad_sem = user_info.get('GradSemester', ' ')
-            grad_year = user_info.get('GradYear', ' ')
-
-        # type marshall all majors/minors to be strings
-        # https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_AttributeValue.html
-        majors = [{"S": s} for s in user_info.get('Major', [])]
-        minors = [{"S": s} for s in user_info.get('Minor', [])]
+    
+    def bad_request(body):
+        HEADERS = {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Allow-Origin': os.environ["DOMAIN_NAME"],
+            'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+        }
         
-        
-
-        timestamp = int(time.time())
-
-        # dict for entry into the users table
-        user_table_item = {
-            'username': {'S': user_info['username']},
-            'register_time': {'N': str(timestamp)},
-            'first_name': {'S': user_info['firstName']},
-            'last_name': {'S': user_info['lastName']},
-            'gender': {'S': user_info['Gender']},
-            'date_of_birth': {'S': user_info['DOB']},
-            'position': {'S': user_info['UserPosition']},
-            'grad_semester': {'S': grad_sem},
-            'grad_year': {'S': grad_year},
-            'majors': {'L': majors},
-            'minors': {'L': minors},
+        return {
+            'headers': HEADERS,
+            'statusCode': 400,
+            'body': json.dumps(body)
         }
 
-        # if the json is from a test request it will have this ttl attribute
-        if "last_updated" in user_info:
-            user_table_item['last_updated'] = {"N":str(user_info['last_updated'])}
+    def add_user_info(self, user_info):
+        """
+        Logs a user entry into the users table with the specified attributes.
+        """
+        
+        #? Do we want a timestamp variable? 
+        # Generate timestamp in EST in the format YYYY-MM-DDTHH:mm:SS
+        # timestamp = datetime.now(ZoneInfo("America/New_York")).strftime('%Y-%m-%dT%H:%M:%S')
+        
+        try:
+            user_id = user_info['user_id']
+        except KeyError:
+            return self.bad_request({'Message': 'Missing parameter: user_id'})
 
+        #? Should we have college acronym collected too? 
+        # dict for entry into the users table
+        user_table_item = {
+            'user_id':              {'S': user_id},
+            'college':              {'S': user_info['college'] or ''},
+            'major':                {'S': user_info['major'] or ''},
+            'undergraduate_class':  {'S': user_info['undergraduate_class'] or ''},
+            'university_status':    {'S': user_info['university_status'] or ''}
+        }
+
+        #! What are we doing for testing? 
+        # if the json is from a test request it will have this ttl attribute
+        # if "last_updated" in user_info:
+        #     user_table_item['last_updated'] = {"N":str(user_info['last_updated'])}
+
+        #! Insert items like this or like log_visit.py? (line 132)
         user_table_response = self.dynamodbclient.put_item(
             TableName=self.USERS_TABLE_NAME,
             Item=user_table_item
-            )
+        )
 
-
-
-        if original_response['ResponseMetadata']['HTTPStatusCode'] != user_table_response['ResponseMetadata']['HTTPStatusCode']:
-            raise Exception("One of Original Table or User Table update failed.")
-
-        return original_response['ResponseMetadata']['HTTPStatusCode']
+        return user_table_response['ResponseMetadata']['HTTPStatusCode']
 
     def handle_register_user_request(self, request, context):
         HEADERS = {
@@ -164,5 +129,4 @@ def handler(request, context):
     # Register user information from the makerspace/register console
     # Since this will be hit in prod, it will go ahead and hit our prod
     # dynamodb table
-    return register_user_function.handle_register_user_request(
-        request, context)
+    return register_user_function.handle_register_user_request(request, context)

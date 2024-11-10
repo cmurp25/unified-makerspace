@@ -20,7 +20,7 @@ class MakerspaceStack(core.Stack):
                  env: core.Environment):
         super().__init__(
             app,
-            f'MakerspaceStack-{stage}',
+            'MakerspaceStack',
             env=env,
             termination_protection=True)
 
@@ -40,22 +40,20 @@ class MakerspaceStack(core.Stack):
 
         self.cognito_setup()
 
-        self.database.old_table.grant_read_write_data(
-            self.visit.lambda_visit)
-        self.database.old_table.grant_write_data(
-            self.visit.lambda_register)
-
+        # Set permissions for each lambda function to respective DDB table
         self.database.visits_table.grant_read_write_data(
             self.visit.lambda_visit)
 
+        # Needed to allow lambdas to verify user
         self.database.users_table.grant_read_data(self.visit.lambda_visit)
+        self.database.users_table.grant_read_data(self.visit.lambda_equipment)
+        
         self.database.users_table.grant_read_write_data(
             self.visit.lambda_register)
         
-        self.database.quiz_list_table.grant_read_write_data(
-            self.visit.lambda_quiz)
-        self.database.quiz_progress_table.grant_read_write_data(
-            self.visit.lambda_quiz)
+        self.database.equipment_table.grant_read_write_data(self.visit.lambda_equipment)
+        
+        self.database.qualifications_table.grant_read_write_data(self.visit.lambda_qualifications)
 
         self.shared_api_gateway()
 
@@ -73,11 +71,10 @@ class MakerspaceStack(core.Stack):
         self.visit = Visit(
             self.app,
             self.stage,
-            self.database.old_table.table_name,
             self.database.users_table.table_name,
             self.database.visits_table.table_name,
-            self.database.quiz_list_table.table_name,
-            self.database.quiz_progress_table.table_name,
+            self.database.equipment_table.table_name,
+            self.database.qualifications_table.table_name,
             create_dns=self.create_dns,
             zones=self.dns,
             env=self.env)
@@ -87,9 +84,8 @@ class MakerspaceStack(core.Stack):
     def shared_api_gateway(self):
 
         self.api_gateway = SharedApiGateway(
-            self.app, self.stage, self.visit.lambda_visit, self.visit.lambda_register, self.visit.lambda_quiz, env=self.env, zones=self.dns, create_dns=self.create_dns)
-
-        self.api_gateway.route_quicksight()
+            self.app, self.stage, self.visit.lambda_visit, self.visit.lambda_register, 
+            self.visit.lambda_quiz, env=self.env, zones=self.dns, create_dns=self.create_dns)
 
         self.add_dependency(self.api_gateway)
 
