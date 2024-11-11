@@ -185,7 +185,9 @@ class Visit(core.Stack):
             },
             handler='log_equipment.handler',
             runtime=aws_lambda.Runtime.PYTHON_3_12)
-        
+    
+    
+    #! Recreate Testing Lambda Function
     def test_api_lambda(self, env: str):
 
         self.lambda_api_test = aws_lambda.Function(
