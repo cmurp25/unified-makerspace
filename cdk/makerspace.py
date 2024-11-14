@@ -1,7 +1,8 @@
 
 from aws_cdk import core
 from visit import Visit
-from api_gateway import SharedApiGateway
+from api_gateway.shared_api_gateway import SharedApiGateway
+from api_gateway.backend_api import BackendApi
 from database import Database
 from dns import (MakerspaceDnsRecords, MakerspaceDns, Domains)
 from cognito.cognito_construct import CognitoConstruct
@@ -38,6 +39,8 @@ class MakerspaceStack(core.Stack):
 
         self.visitors_stack()
 
+        self.backend_stack()
+
         self.cognito_setup()
 
         # Set permissions for each lambda function to respective DDB table
@@ -71,21 +74,39 @@ class MakerspaceStack(core.Stack):
         self.visit = Visit(
             self.app,
             self.stage,
+            create_dns=self.create_dns,
+            zones=self.dns,
+            env=self.env
+        )
+
+        self.add_dependency(self.visit)
+
+    def backend_stack(self):
+
+        self.backend_api = BackendApi(
+            self.app,
+            self.stage,
             self.database.users_table.table_name,
             self.database.visits_table.table_name,
             self.database.equipment_table.table_name,
             self.database.qualifications_table.table_name,
-            create_dns=self.create_dns,
             zones=self.dns,
-            env=self.env)
+            env=self.env
+        )
 
-        self.add_dependency(self.visit)
+        self.add_dependency(self.backend_api)
 
     def shared_api_gateway(self):
 
         self.api_gateway = SharedApiGateway(
-            self.app, self.stage, self.visit.lambda_visit, self.visit.lambda_register, 
-            self.visit.lambda_quiz, env=self.env, zones=self.dns, create_dns=self.create_dns)
+            self.app,
+            self.stage,
+            self.backend_api.lambda_users_handler,
+            self.backend_api.lambda_visits_handler,
+            self.backend_api.lambda_qualifications_handler,
+            self.backend_api.lambda_equipment_handler,
+            env=self.env, zones=self.dns, create_dns=self.create_dns
+        )
 
         self.add_dependency(self.api_gateway)
 
@@ -103,11 +124,14 @@ class MakerspaceStack(core.Stack):
         #
         # See the Domains class where we note that we could use NS records
         # to share sub-domain space.
-        self.dns_records = MakerspaceDnsRecords(self.app, self.stage,
-                                                env=self.env,
-                                                zones=self.dns,
-                                                api_gateway=self.api_gateway.api,
-                                                visit_distribution=self.visit.distribution)
+        self.dns_records = MakerspaceDnsRecords(
+            self.app,
+            self.stage,
+            env=self.env,
+            zones=self.dns,
+            api_gateway=self.api_gateway.api,
+            visit_distribution=self.visit.distribution
+        )
 
         self.add_dependency(self.dns_records)
 
