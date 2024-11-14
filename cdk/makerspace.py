@@ -74,13 +74,10 @@ class MakerspaceStack(core.Stack):
         self.visit = Visit(
             self.app,
             self.stage,
-            self.database.users_table.table_name,
-            self.database.visits_table.table_name,
-            self.database.equipment_table.table_name,
-            self.database.qualifications_table.table_name,
             create_dns=self.create_dns,
             zones=self.dns,
-            env=self.env)
+            env=self.env
+        )
 
         self.add_dependency(self.visit)
 
@@ -94,16 +91,22 @@ class MakerspaceStack(core.Stack):
             self.database.equipment_table.table_name,
             self.database.qualifications_table.table_name,
             zones=self.dns,
-            env=self.env)
+            env=self.env
+        )
 
         self.add_dependency(self.backend_api)
 
     def shared_api_gateway(self):
 
         self.api_gateway = SharedApiGateway(
-            self.app, self.stage, self.backend_api.lambda_users_handler, self.backend_api.lambda_visits_handler,
-            self.backend_api.lambda_qualifications_handler, self.backend_api.lambda_equipment_handler,
-            env=self.env, zones=self.dns, create_dns=self.create_dns)
+            self.app,
+            self.stage,
+            self.backend_api.lambda_users_handler,
+            self.backend_api.lambda_visits_handler,
+            self.backend_api.lambda_qualifications_handler,
+            self.backend_api.lambda_equipment_handler,
+            env=self.env, zones=self.dns, create_dns=self.create_dns
+        )
 
         self.add_dependency(self.api_gateway)
 
@@ -121,11 +124,14 @@ class MakerspaceStack(core.Stack):
         #
         # See the Domains class where we note that we could use NS records
         # to share sub-domain space.
-        self.dns_records = MakerspaceDnsRecords(self.app, self.stage,
-                                                env=self.env,
-                                                zones=self.dns,
-                                                api_gateway=self.api_gateway.api,
-                                                visit_distribution=self.visit.distribution)
+        self.dns_records = MakerspaceDnsRecords(
+            self.app,
+            self.stage,
+            env=self.env,
+            zones=self.dns,
+            api_gateway=self.api_gateway.api,
+            visit_distribution=self.visit.distribution
+        )
 
         self.add_dependency(self.dns_records)
 

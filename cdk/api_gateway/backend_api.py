@@ -55,8 +55,8 @@ class BackendApi(core.Stack):
         # Provision lambda functions
         self.visits_handler_lambda(visits_table_name, users_table_name, self.endpoint)
         self.users_handler_lambda(users_table_name, self.endpoint)
-        self.qualifications_handler_lambda(qualifications_table_name, users_table_name, self.endpoint)
-        self.equipment_handler_lambda(equipment_table_name, users_table_name, self.endpoint)
+        self.qualifications_handler_lambda(qualifications_table_name, self.endpoint)
+        self.equipment_handler_lambda(equipment_table_name, self.endpoint)
 
         # Give AmazonAPIGatewayInvokeFullAccess to required lambda functions
         # Defining IAM policy
@@ -115,7 +115,6 @@ class BackendApi(core.Stack):
             code=aws_lambda.Code.from_asset('api_gateway/lambda_code/qualifications_handler'),
             environment={
                 'DOMAIN_NAME': domain_name,
-                'USERS_TABLE_NAME': users_table_name,
                 'QUALIFICATIONS_TABLE_NAME': qualifications_table_name,
             },
             handler='qualifications_handler.handler',
@@ -131,7 +130,6 @@ class BackendApi(core.Stack):
             code=aws_lambda.Code.from_asset('api_gateway/lambda_code/equipment_handler'),
             environment={
                 'DOMAIN_NAME': domain_name,
-                'USERS_TABLE_NAME': users_table_name,
                 'EQUIPMENT_TABLE_NAME': equipment_table_name,
             },
             handler='equipment_handler.handler',
