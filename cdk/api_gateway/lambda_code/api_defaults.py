@@ -47,6 +47,22 @@ class FieldCheck():
     required: list[str]
     disallowed: list[str]
 
+@dataclass
+class CompletableItem():
+    """
+    Class used to represent items that can be completable. This class
+    is hashable and can be used in sets, keys in dictionaries, etc.
+    """
+    name: str = ""
+    completion_status: str = ""
+
+    def __hash__(self):
+        """
+        Generate a hash of the class. Uses the 'name'
+        class variable for hashing.
+        """
+        return hash((self.name))
+
 # Define path constants
 user_endpoint: str = "/{user_id}"
 users_path: str = "/users"

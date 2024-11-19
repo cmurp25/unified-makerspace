@@ -25,6 +25,11 @@ class LogQualificationFunction():
             self.qualifications_table = dynamodb.Table(QUALIFICATIONS_TABLE_NAME)
         else:
             self.qualifications_table = qualifications_table
+
+        self.required_fields: list[str] = ["user_id", "trainings", "waivers"]
+        self.completable_item_lists: list[str] = ["trainings", "waivers"]
+        self.completable_item_fields: list [str] = ["name", "completion_status"]
+        self.valid_completion_statuses: list[str] = ["Complete", "Incomplete"]
             
     # Main handler function
     def qualifications_handler(self, event, context):
@@ -168,6 +173,11 @@ class LogQualificationFunction():
         # If 'waivers' not in data, store an empty list
         if 'waivers' not in data:
             data['waivers'] = []
+            
+        # If 'miscellaneous' not in data, store an empty list
+        if 'miscellaneous' not in data:
+            data['miscellaneous'] = []
+
         # Always force "_ignore" key to have value of "1"
         data['_ignore'] = "1"
 
@@ -215,7 +225,8 @@ class LogQualificationFunction():
     def patch_user_qualifications(self, user_id: str, data: dict):
         """
         Updates the qualifications information entry for a specified user. Fails if the a
-        qualifications entry does not exist for the user.
+        qualifications entry does not exist for the user. Always appends list objects to
+        the list found in the user's qualifications entry.
 
         :params user_id: The name of the user.
         :params data: The updated qualifications information entry.
@@ -250,7 +261,34 @@ class LogQualificationFunction():
 
         # Copy all all fields from data to user
         for key in data:
-            qualifications[key] = data[key]
+
+            # Handle appending completable item lists
+            if key in self.completable_item_lists:
+
+                # Check that it is actually a list. Use an empty list for type comparison
+                if type(data[key]) != type([]):
+                    errorMsg: str = "The provided value for key {key} is not a list."
+                    body = { 'errorMsg': errorMsg }
+                    return buildResponse(statusCode = 400, body = body)
+
+                # Build the unique set of qualifications[key] and data[key] CompletableItems
+                unique_items: set[CompletableItem] = set()
+                unique_items.update([
+                    CompletableItem(k["name"], k["completion_status"])
+                    for k in qualifications[key]
+                ])
+                unique_items.update([
+                    CompletableItem(k["name"], k["completion_status"])
+                    for k in data[key]
+                ])
+
+                # Create a list of dictionaries from the CompletableItems in the
+                # unique_items set and update qualifications[key] with it.
+                qualifications[key] = [item.__dict__ for item in unique_items]
+
+            # Otherwise, just replace the item in the qualifications entry
+            else:
+                qualifications[key] = data[key]
 
         # Validate new item
         try:
@@ -286,26 +324,22 @@ class LogQualificationFunction():
         :raises: InvalidRequestBody
         """
 
-        required_fields: list[str] = ["user_id", "trainings", "waivers"]
-        completable_item_lists: list[str] = ["trainings", "waivers"]
-        completable_item_fields: list [str] = ["name", "completion_status"]
-        valid_completion_statuses: list[str] = ["Complete", "Incomplete"]
 
         # Ensure all required fields are present
-        if not allKeysPresent(required_fields, data):
-            errorMsg: str = f"Missing at least one field from {required_fields} in request body. 'trainings' and 'waivers' can be empty lists."
+        if not allKeysPresent(self.required_fields, data):
+            errorMsg: str = f"Missing at least one field from {self.required_fields} in request body. 'trainings' and 'waivers' can be empty lists."
             raise InvalidRequestBody(errorMsg)
 
-        for completable_list in completable_item_lists:
+        for completable_list in self.completable_item_lists:
             for item in data[completable_list]:
-                if not allKeysPresent(completable_item_fields, item):
-                    errorMsg: str = f"Missing at least one field from {completable_item_fields} for at least one completeable item in {completable_list}."
+                if not allKeysPresent(self.completable_item_fields, item):
+                    errorMsg: str = f"Missing at least one field from {self.completable_item_fields} for at least one completeable item in {completable_list}."
                     raise InvalidRequestBody(errorMsg)
 
                 name = str(item['name'])
                 status = str(item['completion_status'])
-                if status not in valid_completion_statuses:
-                    errorMsg: str = f"Completion status '{status}' is not one of the valid completion statuses {valid_completion_statuses} for object with name {name} in {completable_list}."
+                if status not in self.valid_completion_statuses:
+                    errorMsg: str = f"Completion status '{status}' is not one of the valid completion statuses {self.valid_completion_statuses} for object with name {name} in {completable_list}."
                     raise InvalidRequestBody(errorMsg)
 
         return data
