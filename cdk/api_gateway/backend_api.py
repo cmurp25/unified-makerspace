@@ -48,27 +48,27 @@ class BackendApi(core.Stack):
         self.endpoint: str = "https://" + self.domain_name
 
         # Provision lambda functions
-        self.visits_handler_lambda(visits_table_name, users_table_name, self.endpoint)
-        self.users_handler_lambda(users_table_name, self.endpoint)
-        self.qualifications_handler_lambda(qualifications_table_name, users_table_name, self.endpoint)
-        self.equipment_handler_lambda(equipment_table_name, users_table_name, self.endpoint)
+        self.visits_handler_lambda(visits_table_name, users_table_name, ("https://" + self.domain_name))
+        self.users_handler_lambda(users_table_name, ("https://" + self.domain_name))
+        self.qualifications_handler_lambda(qualifications_table_name, ("https://" + self.domain_name))
+        self.equipment_handler_lambda(equipment_table_name, ("https://" + self.domain_name))
 
-        # Give AmazonAPIGatewayInvokeFullAccess to required lambda functions
-        # Defining IAM policy
-        api_invoke_full_access_policy = aws_iam.PolicyStatement(
-            effect=aws_iam.Effect.ALLOW,
-            principals=["AmazonAPIGatewayInvokeFullAccess"],
-            resources=["*"]
+        # Create IAM Role for Lambda function and attach the AmazonAPIGatewayInvokeFullAccess policy
+        self.lambda_role = aws_iam.Role(self, "LambdaApiInvokeRole",
+            assumed_by=aws_iam.ServicePrincipal("lambda.amazonaws.com"),  # Lambda service principal
+            managed_policies=[
+                aws_iam.ManagedPolicy.from_aws_managed_policy_name("AmazonAPIGatewayInvokeFullAccess") 
+            ]
         )
-
-        # Giving lambda functions the invoke full access policy
-        self.lambda_visits_handler.role.add_to_policy(api_invoke_full_access_policy)
-        self.lambda_users_handler.role.add_to_policy(api_invoke_full_access_policy)
-        self.lambda_qualifications_handler.role.add_to_policy(api_invoke_full_access_policy)
-        self.lambda_equipment_handler.role.add_to_policy(api_invoke_full_access_policy)
         
-        # Prepare lambda testing suite
-        self.test_api_lambda(env=stage)
+        # Giving lambda functions the invoke full access policy
+        self.lambda_visits_handler.role.add_to_policy(self.lambda_role)
+        self.lambda_users_handler.role.add_to_policy(self.lambda_role)
+        self.lambda_qualifications_handler.role.add_to_policy(self.lambda_role)
+        self.lambda_equipment_handler.role.add_to_policy(self.lambda_role)
+        
+        # Prepare lambda testing suite #! Must recreate testing
+        # self.test_api_lambda(env=stage)
 
     def visits_handler_lambda(self, visits_table_name: str, users_table_name: str, domain_name: str):
 
@@ -83,7 +83,8 @@ class BackendApi(core.Stack):
                 'USERS_TABLE_NAME': users_table_name,
             },
             handler='visits_handler.handler',
-            runtime=aws_lambda.Runtime.PYTHON_3_12)
+            runtime=aws_lambda.Runtime.PYTHON_3_9,
+            role=self.lambda_role)
 
     
     def users_handler_lambda(self, users_table_name: str, domain_name: str):
@@ -98,10 +99,11 @@ class BackendApi(core.Stack):
                 'USERS_TABLE_NAME': users_table_name,
             },
             handler='users_handler.handler',
-            runtime=aws_lambda.Runtime.PYTHON_3_12)
+            runtime=aws_lambda.Runtime.PYTHON_3_9,
+            role=self.lambda_role)
 
     
-    def qualifications_handler_lambda(self, qualifications_table_name: str, users_table_name: str, domain_name: str):
+    def qualifications_handler_lambda(self, qualifications_table_name: str, domain_name: str):
         
         self.lambda_qualifications_handler = aws_lambda.Function(
             self,
@@ -110,14 +112,14 @@ class BackendApi(core.Stack):
             code=aws_lambda.Code.from_asset('api_gateway/lambda_code/qualifications_handler'),
             environment={
                 'DOMAIN_NAME': domain_name,
-                'USERS_TABLE_NAME': users_table_name,
                 'QUALIFICATIONS_TABLE_NAME': qualifications_table_name,
             },
             handler='qualifications_handler.handler',
-            runtime=aws_lambda.Runtime.PYTHON_3_12)
+            runtime=aws_lambda.Runtime.PYTHON_3_9,
+            role=self.lambda_role)
 
     
-    def equipment_handler_lambda(self, equipment_table_name: str, users_table_name: str, domain_name: str):
+    def equipment_handler_lambda(self, equipment_table_name: str, domain_name: str):
         
         self.lambda_equipment_handler = aws_lambda.Function(
             self,
@@ -126,11 +128,11 @@ class BackendApi(core.Stack):
             code=aws_lambda.Code.from_asset('api_gateway/lambda_code/equipment_handler'),
             environment={
                 'DOMAIN_NAME': domain_name,
-                'USERS_TABLE_NAME': users_table_name,
                 'EQUIPMENT_TABLE_NAME': equipment_table_name,
             },
             handler='equipment_handler.handler',
-            runtime=aws_lambda.Runtime.PYTHON_3_12)
+            runtime=aws_lambda.Runtime.PYTHON_3_9,
+            role=self.lambda_role)
     
     
     #! Recreate Testing Lambda Function
