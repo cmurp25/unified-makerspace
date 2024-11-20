@@ -62,7 +62,7 @@ class BackendApi(core.Stack):
         # Defining IAM policy
         api_invoke_full_access_policy = aws_iam.PolicyStatement(
             effect=aws_iam.Effect.ALLOW,
-            principals=["AmazonAPIGatewayInvokeFullAccess"],
+            actions= ["execute-api:Invoke", "execute-api:ManageConnections"],
             resources=["*"]
         )
 
