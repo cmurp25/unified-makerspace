@@ -1,8 +1,13 @@
 
 from distutils.command.build import build
 from aws_cdk import (
+    aws_certificatemanager,
+    aws_s3_deployment,
     core,
+    aws_cloudfront,
+    aws_cloudfront_origins,
     aws_lambda,
+    aws_s3,
     aws_iam,
 )
 
