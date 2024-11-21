@@ -94,14 +94,25 @@ class RegisterUserFunction():
     ######################################
     # User information function handlers #
     ######################################
-    def get_all_user_information(self):
+    def get_all_user_information(self, query_parameters: dict = {}):
         """
         Returns all user information entries from the user information table.
+
+        :params query_parameters: A dictionary of parameter names and values to filter by.
         """
 
-        users = scanTable(self.users_table)
+        # Try to get the number of items to return
+        if "limit" in query_parameters:
+            limit = query_parameters["limit"]
+
+        # Otherwise return as many as possible
+        else:
+            limit = QUERY_LIMIT_RETURN_ALL
+
+        users = scanTable(self.users_table, limit = limit)
 
         body = { 'users': users }
+
         return buildResponse(statusCode = 200, body = body)
 
     def create_user_information(self, data: dict):

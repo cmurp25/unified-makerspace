@@ -105,7 +105,7 @@ class LogQualificationFunction():
 
         :params query_parameters: A dictionary of parameter names and values to filter by.
         """
-        
+
         if query_parameters:
             try:
                 timestamp_expression = buildTimestampKeyExpression(query_parameters, 'last_updated')
@@ -114,10 +114,23 @@ class LogQualificationFunction():
                 body = { 'errorMsg': str(iqp) }
                 return buildResponse(statusCode = 400, body = body)
 
+            # Get the number of items to return
+            if "limit" in query_parameters:
+                limit = query_parameters["limit"]
+
+            # Otherwise return as many as possible
+            else:
+                limit = QUERY_LIMIT_RETURN_ALL
+
             # Query for matching qualifcation entries
             try:
-                key_expression = Key('_ignore').eq("1") & timestamp_expression
-                items = queryByKeyExpression(self.qualifications_table, key_expression, GSI = TIMESTAMP_INDEX)
+                if timestamp_expression:
+                    key_expression = Key('_ignore').eq("1") & timestamp_expression
+                else:
+                    key_expression = Key('_ignore').eq("1")
+
+                items = queryByKeyExpression(self.qualifications_table, key_expression,
+                                             GSI = TIMESTAMP_INDEX, limit = limit)
 
             except Exception as e:
                 body = { 'errorMsg': "Something went wrong on the server." }
@@ -127,15 +140,19 @@ class LogQualificationFunction():
             qualifications = []
             for item in items:
                 user_id = item['user_id']
+                last_updated = item['last_updated']
 
                 response = self.qualifications_table.get_item(
-                    Key={ 'user_id': user_id }
+                    Key={
+                        'user_id': user_id,
+                        'last_updated': last_updated,
+                    }
                 )
 
                 qualifications.append(response['Item'])
 
         else:
-            qualifications = scanTable(self.qualifications_table)
+            qualifications = scanTable(self.qualifications_table, limit = SCAN_LIMIT_RETURN_ALL)
 
         body = { 'qualifications': qualifications }
 

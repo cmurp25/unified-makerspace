@@ -127,6 +127,64 @@ class LogEquipmentFunction():
 
         return buildResponse(statusCode = 200, body = body)
 
+    def get_all_equipment_usage_information(self, query_parameters: dict):
+        """
+        Returns all the equipment usage objects from the equipment usage table.
+
+        :params query_parameters: A dictionary of parameter names and values to filter by.
+        """
+
+        if query_parameters:
+            try:
+                timestamp_expression = buildTimestampKeyExpression(query_parameters, 'timestamp')
+
+            except InvalidQueryParameters as iqp:
+                body = { 'errorMsg': str(iqp) }
+                return buildResponse(statusCode = 400, body = body)
+
+            # Get the number of items to return
+            if "limit" in query_parameters:
+                limit = query_parameters["limit"]
+
+            # Otherwise return as many as possible
+            else:
+                limit = QUERY_LIMIT_RETURN_ALL
+
+            try:
+                if timestamp_expression:
+                    key_expression = Key('_ignore').eq("1") & timestamp_expression
+                else:
+                    key_expression = Key('_ignore').eq("1")
+
+                items = queryByKeyExpression(self.equipment_table, key_expression,
+                                             GSI = TIMESTAMP_INDEX, limit = limit)
+
+            except Exception as e:
+                body = { 'errorMsg': "Something went wrong on the server." }
+                return buildResponse(statusCode = 500, body = body)
+
+            # Do a second lookup for all returned items to get the rest of the data
+            equipment_logs = []
+            for item in items:
+                user_id = item['user_id']
+                timestamp = item['timestamp']
+
+                response = self.equipment_table.get_item(
+                    Key={ 
+                        'user_id': user_id,
+                        'timestamp': timestamp
+                    }
+                )
+
+                equipment_logs.append(response['Item'])
+
+        else:
+            equipment_logs = scanTable(self.equipment_table, limit = SCAN_LIMIT_RETURN_ALL)
+
+        body = { 'equipment_logs': equipment_logs }
+
+        return buildResponse(statusCode = 200, body = body)
+
     def create_user_equipment_usage(self, data: dict):
         """
         Adds an equipment usage entry for a specified user to the equipment usage table.
@@ -178,12 +236,6 @@ class LogEquipmentFunction():
         :params query_parameters: A dictionary of parameter names and values to filter by.
         """
 
-        if 'limit' in query_parameters and query_parameters['limit'] > 0:
-            limit = query_parameters['limit']
-            del query_parameters['limit']
-        else:
-            limit = DEFAULT_QUERY_LIMIT
-
         if query_parameters:
             try:
                 timestamp_expression = buildTimestampKeyExpression(query_parameters, 'timestamp')
@@ -192,9 +244,22 @@ class LogEquipmentFunction():
                 body = { 'errorMsg': str(iqp) }
                 return buildResponse(statusCode = 400, body = body)
 
+            # Get the number of items to return
+            if "limit" in query_parameters:
+                limit = query_parameters["limit"]
+
+            # Otherwise return as many as possible
+            else:
+                limit = QUERY_LIMIT_RETURN_ALL
+
             try:
-                key_expression = Key('user_id').eq(user_id) & timestamp_expression
-                equipment_logs = queryByKeyExpression(self.equipment_table, key_expression, None, limit)
+                if timestamp_expression:
+                    key_expression = Key('user_id').eq(user_id) & timestamp_expression
+                else:
+                    key_expression = Key('user_id').eq(user_id)
+
+                equipment_logs = queryByKeyExpression(self.equipment_table, key_expression,
+                                                      GSI = None, limit = limit)
 
             except Exception as e:
                 body = { 'errorMsg': "Something went wrong on the server." }
@@ -202,7 +267,12 @@ class LogEquipmentFunction():
 
         else:
             key_expression = Key('user_id').eq(user_id)
-            equipment_logs = queryByKeyExpression(self.equipment_table, key_expression, None, limit)
+            equipment_logs = queryByKeyExpression(
+                    self.equipment_table,
+                    key_expression,
+                    GSI = None,
+                    limit = QUERY_LIMIT_RETURN_ALL
+            )
 
         body = { 'equipment_logs': equipment_logs }
 
