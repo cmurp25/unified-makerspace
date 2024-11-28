@@ -2,8 +2,11 @@
   "app": "python3 app.py",
   "context": {
     "aws-cdk:enableDiffNoFail": "true",
-    "@aws-cdk/core:enableStackNameDuplicates": "true",
     "@aws-cdk/core:newStyleStackSynthesis": true,
-    "@aws-cdk/core:stackRelativeExports": "true"
+    "@aws-cdk/core:stackRelativeExports": "true",
+    "@aws-cdk/aws-certificatemanager:defaultDnsValidatedCertificateFunctionRuntime": "nodejs18.x",
+    "@aws-cdk/aws-s3-deployment:defaultBucketDeploymentFunctionRuntime": "python3.9",
+    "@aws-cdk/aws-s3-deployment:lambdaFunctionRuntime": "python3.9",
+    "@aws-cdk/aws-s3-deployment:defaultFunctionRuntime": "python3.9"
   }
 }

@@ -1,18 +1,21 @@
 
-from distutils.command.build import build
+# from distutils.command.build import build
 from aws_cdk import (
+    Stack,
+    Environment,
     aws_certificatemanager,
     aws_s3_deployment,
-    core,
     aws_cloudfront,
     aws_cloudfront_origins,
     aws_s3,
+    Duration,
+    Aws
 )
-
+from constructs import Construct
 from dns import MakerspaceDns
 import logging
 
-class Visit(core.Stack):
+class Visit(Stack):
     """
     Track visitors to the makerspace via a simple web console. This
     exists as a backup in case the hardware scanner is not functional.
@@ -25,10 +28,10 @@ class Visit(core.Stack):
     4. The user has successfully logged a visit.
     """
 
-    def __init__(self, scope: core.Construct,
+    def __init__(self, scope: Construct,
                  stage: str,
                  *,
-                 env: core.Environment,
+                 env: Environment,
                  create_dns: bool,
                  zones: MakerspaceDns = None):
 
@@ -50,7 +53,7 @@ class Visit(core.Stack):
     def source_bucket(self):
         self.oai = aws_cloudfront.OriginAccessIdentity(
             self, 'VisitorsOriginAccessIdentity')
-
+ 
         self.bucket = aws_s3.Bucket(self, 'cumakerspace-visitors-console')
         self.bucket.grant_read(self.oai)
         aws_s3_deployment.BucketDeployment(self, 'VisitorsConsoleDeployment',
@@ -66,8 +69,21 @@ class Visit(core.Stack):
         if self.create_dns:
             domain_name = self.zones.visit.zone_name
             kwargs['domain_names'] = [domain_name]
-            kwargs['certificate'] = aws_certificatemanager.DnsValidatedCertificate(
-                self, 'VisitorsCertificate', domain_name=domain_name, hosted_zone=self.zones.visit)
+            # kwargs['certificate'] = aws_certificatemanager.DnsValidatedCertificate(
+            #     self, 'VisitorsCertificate', domain_name=domain_name, hosted_zone=self.zones.visit)
+            
+            # Create a new CNAME
+            # kwargs['certificate'] = aws_certificatemanager.Certificate(
+            #     self, 'VisitorsCertificate',
+            #     domain_name=domain_name,
+            #     validation=aws_certificatemanager.CertificateValidation.from_dns(self.zones.visit)
+            # )
+            
+            # Obtain certificate from existing certificate
+            existing_certificate_arn = f"arn:aws:acm:{Aws.REGION}:{Aws.ACCOUNT_ID}:certificate/f53fd3eb-7791-407c-9458-50abea7ff9ce"
+            kwargs['certificate'] = aws_certificatemanager.Certificate.from_certificate_arn(
+                self, 'VisitorsCertificate', existing_certificate_arn
+            )
 
         kwargs['default_behavior'] = aws_cloudfront.BehaviorOptions(
             origin=aws_cloudfront_origins.S3Origin(
@@ -86,8 +102,27 @@ class Visit(core.Stack):
             http_status=404,
             response_http_status=200,
             response_page_path="/index.html",
-            ttl=core.Duration.seconds(10)
+            ttl=Duration.seconds(10)
         )]
 
-        self.distribution = aws_cloudfront.Distribution(
-            self, 'VisitorsConsoleCache', **kwargs)
+        # Creates a new CloudFront Distribution
+        # self.distribution = aws_cloudfront.Distribution(
+        #     self, 'VisitorsConsoleCache', **kwargs)
+        
+        # Reference the existing CloudFront distribution
+        self.distribution = aws_cloudfront.Distribution.from_distribution_attributes(
+            self, 
+            "ExistingCloudFrontDistribution",
+            distribution_id="E1RWW3RYQYP7C",  # Replace with your CloudFront Distribution ID
+            domain_name="d3jh19seg4qmka.cloudfront.net" 
+        )
+         
+        # Create a Route 53 alias record pointing to the distribution
+        # if self.create_dns:
+        #     aws_route53.ARecord(
+        #         self, 'VisitorsAliasRecord',
+        #         zone=self.zones.visit,  # Your Route 53 hosted zone
+        #         target=aws_route53.RecordTarget.from_alias(
+        #             aws_route53.CloudFrontTarget(self.distribution)
+        #         )
+        #     )

@@ -1,12 +1,14 @@
 
 from typing import NamedTuple
 from aws_cdk import (
+    Stack,
+    Environment,
     aws_apigateway,
     aws_cloudfront,
     aws_route53,
-    aws_route53_targets,
-    core
+    aws_route53_targets
 )
+from constructs import Construct
 
 
 class Domains:
@@ -33,7 +35,7 @@ class Domains:
         return f'{self.stage}{prefix}.cumaker.space'
 
 
-class MakerspaceDns(core.Stack):
+class MakerspaceDns(Stack):
     """
     Register the DNS used by the portions of the makerspace website owned by
     the capstone in Route53.
@@ -46,8 +48,8 @@ class MakerspaceDns(core.Stack):
     fewer steps.
     """
 
-    def __init__(self, scope: core.Construct,
-                 stage: str, *, env: core.Environment):
+    def __init__(self, scope: Construct,
+                 stage: str, *, env: Environment):
         super().__init__(scope, 'MakerspaceDns', env=env)
 
         self.domains = Domains(stage)
@@ -76,12 +78,12 @@ class MakerspaceDns(core.Stack):
                                      zone_name=self.domains.admin)
 
 
-class MakerspaceDnsRecords(core.Stack):
+class MakerspaceDnsRecords(Stack):
 
-    def __init__(self, scope: core.Construct,
+    def __init__(self, scope: Construct,
                  stage: str,
                  *,
-                 env: core.Environment,
+                 env: Environment,
                  zones: MakerspaceDns,
                  api_gateway: aws_apigateway.RestApi,
                  visit_distribution: aws_cloudfront.Distribution):
@@ -104,11 +106,19 @@ class MakerspaceDnsRecords(core.Stack):
                                                                   hosted_zone_id=self.zones.api.hosted_zone_id,
                                                                   zone_name=self.zones.api.zone_name)
 
+        # aws_route53.ARecord(self, 'ApiRecord',
+        #                     zone=zone,
+        #                     target=aws_route53.RecordTarget(
+        #                         alias_target=aws_route53_targets.ApiGatewayDomain(
+        #                             api_gateway.domain_name)))
+        
         aws_route53.ARecord(self, 'ApiRecord',
-                            zone=zone,
-                            target=aws_route53.RecordTarget(
-                                alias_target=aws_route53_targets.ApiGatewayDomain(
-                                    api_gateway.domain_name)))
+                    zone=zone,
+                    target=aws_route53.RecordTarget.from_alias(
+                        aws_route53_targets.ApiGatewayDomain(
+                            domain_name=api_gateway.domain_name
+                        )
+                    ))
 
     def visit_record(self, visit: aws_cloudfront.Distribution):
 
