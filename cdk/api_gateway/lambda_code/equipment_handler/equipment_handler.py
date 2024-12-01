@@ -8,7 +8,7 @@ import logging
 from datetime import datetime
 from ..api_defaults import *
 
-class LogEquipmentFunction():
+class EquipmentHandler():
     def __init__(self, equipment_table):
         # TODO: Setup CloudWatch Logs
         # Sets up CloudWatch logs and sets level to INFO
@@ -26,7 +26,7 @@ class LogEquipmentFunction():
             self.equipment_table = equipment_table
             
     # Main handler function
-    def equipment_handler(self, event, context):
+    def handle_event(self, event, context):
         try:
             method_requires_body: list = ["POST", "PATCH"]
 
@@ -102,7 +102,7 @@ class LogEquipmentFunction():
                 return buildResponse(statusCode = 400, body = body)
 
             try:
-                key_expression = Key('_ignore').eq("1") & timestamp_expression
+                key_expression = Key(GSI_ATTRIBUTE_NAME).eq("1") & timestamp_expression
                 items = queryByKeyExpression(self.equipment_table, key_expression, GSI = TIMESTAMP_INDEX)
 
             except Exception as e:
@@ -152,9 +152,9 @@ class LogEquipmentFunction():
 
             try:
                 if timestamp_expression:
-                    key_expression = Key('_ignore').eq("1") & timestamp_expression
+                    key_expression = Key(GSI_ATTRIBUTE_NAME).eq("1") & timestamp_expression
                 else:
-                    key_expression = Key('_ignore').eq("1")
+                    key_expression = Key(GSI_ATTRIBUTE_NAME).eq("1")
 
                 items = queryByKeyExpression(self.equipment_table, key_expression,
                                              GSI = TIMESTAMP_INDEX, limit = limit)
@@ -213,8 +213,8 @@ class LogEquipmentFunction():
             body = { 'errorMsg': errorMsg}
             return buildResponse(statusCode = 400, body = body)
 
-        # Always force "_ignore" key to have value of "1"
-        data['_ignore'] = "1"
+        # Always force GSI_ATTRIBUTE_NAME key to have value of "1"
+        data[GSI_ATTRIBUTE_NAME] = "1"
 
         # Actually try putting the item into the table
         try:
@@ -323,8 +323,8 @@ class LogEquipmentFunction():
         except KeyError:
             pass
         
-        # Ensure data['_ignore'] == '1'
-        data['_ignore'] = '1'
+        # Ensure data[GSI_ATTRIBUTE_NAME] == '1'
+        data[GSI_ATTRIBUTE_NAME] = '1'
 
         # Copy all all fields from data to user
         for key in data:
@@ -473,7 +473,7 @@ class LogEquipmentFunction():
         return data
 
             
-log_equipment_function = LogEquipmentFunction(None)
 
 def handler(request, context):
-    return log_equipment_function.equipment_handler(request, context)
+    equipment_handler = EquipmentHandler(None)
+    return equipment_handler.handle_event(request, context)
