@@ -9,7 +9,7 @@ import re
 from datetime import datetime
 from ..api_defaults import *
 
-class LogVisitFunction():
+class VisitsHandler():
     """
     This function will be used to wrap the functionality of the lambda
     so we can more easily test with pytest.
@@ -48,7 +48,7 @@ class LogVisitFunction():
             self.client = ses_client
             
     # Main handler function
-    def visits_handler(self, event, context):
+    def handle_event(self, event, context):
         try:
             method_requires_body: list = ["POST", "PATCH"]
 
@@ -61,11 +61,8 @@ class LogVisitFunction():
             if user_endpoint in resource_path:
                 user_id = event['pathParameters'].get('user_id')
 
-                # Make sure no '@' is in user_id
-                if len(user_id.split("@")) > 1:
-                    errorMsg: str = "user_id can't be an email."
-                    body = { 'errorMsg': errorMsg }
-                    return buildResponse(statusCode = 400, body = body)
+                # Ensure user_id is just the username if it is an email
+                user_id.split('@')[0]
 
             # Get the body data if needed
             data:dict = {}
@@ -194,9 +191,9 @@ class LogVisitFunction():
 
             try:
                 if timestamp_expression:
-                    key_expression = Key('_ignore').eq("1") & timestamp_expression
+                    key_expression = Key(GSI_ATTRIBUTE_NAME).eq("1") & timestamp_expression
                 else:
-                    key_expression = Key('_ignore').eq("1")
+                    key_expression = Key(GSI_ATTRIBUTE_NAME).eq("1")
 
                 items = queryByKeyExpression(self.visits_table, key_expression,
                                              GSI = TIMESTAMP_INDEX, limit = limit)
@@ -255,8 +252,8 @@ class LogVisitFunction():
             body = { 'errorMsg': errorMsg}
             return buildResponse(statusCode = 400, body = body)
 
-        # Always force "_ignore" key to have value of "1"
-        data['_ignore'] = "1"
+        # Always force GSI_ATTRIBUTE_NAME key to have value of "1"
+        data[GSI_ATTRIBUTE_NAME] = "1"
 
         # Actually try putting the item into the table
         try:
@@ -352,10 +349,10 @@ class LogVisitFunction():
                 raise InvalidRequestBody(errorMsg)
 
 
-log_visit_function = LogVisitFunction(None, None, None)
 
 
 def handler(request, context):
     # This will be hit in prod, and will connect to the stood-up dynamodb
     # and Simple Email Service clients.
-    return log_visit_function.visits_handler(request, context)
+    visit_handler = VisitsHandler(None, None, None)
+    return visit_handler.handle_event(request, context)
