@@ -63,8 +63,10 @@ class CompletableItem():
         """
         return hash((self.name))
 
+# Primary key to use in all tables
+PRIMARY_KEY: str = "user_id"
 # Define path constants
-user_endpoint: str = "/{user_id}"
+user_endpoint: str = f"/{{{PRIMARY_KEY}}}"
 users_path: str = "/users"
 users_param_path: str = users_path + user_endpoint
 visits_path: str = "/visits"
@@ -78,6 +80,7 @@ qualifications_param_path: str = qualifications_path + user_endpoint
 DEFAULT_SCAN_LIMIT: int = 1000
 TIMESTAMP_FORMAT: str = "%Y-%m-%dT%H:%M:%S"
 TIMESTAMP_INDEX: str = "TimestampIndex"
+GSI_ATTRIBUTE_NAME: str = "_ignore"
 VALID_LOCATIONS: list[str] = ["Watt", "Cooper", "CUICAR"]
 VALID_QUERY_PARAMETERS: list[str] = [
     "start_timestamp",
