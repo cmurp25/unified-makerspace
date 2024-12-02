@@ -94,13 +94,16 @@ class Visit(Stack):
         kwargs['default_root_object'] = "index.html"
         kwargs['price_class'] = aws_cloudfront.PriceClass.PRICE_CLASS_100
 
-        # Error response to redirect to index.html for React routing
+        # This error response redirect back to index.html because React handles everything in a page
+        # including routing. when you add /register after the domain, there would be such key avaliable
+        # in the static site. We need cloudfront redirect it back to index.html for React to
+        # handle the routing.
         kwargs['error_responses'] = [
             aws_cloudfront.ErrorResponse(
                 http_status=404,
                 response_http_status=200,
                 response_page_path="/index.html",
-                ttl=Duration.seconds(300)  # Adjusted for production
+                ttl=Duration.seconds(10)
             )
         ]
 
