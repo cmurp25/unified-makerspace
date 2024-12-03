@@ -39,7 +39,8 @@ class SharedApiGateway(Stack):
     def __init__(self, scope: Construct, stage: str,
                 user: aws_lambda.Function, visits: aws_lambda.Function,
                  qualifications: aws_lambda.Function, equipment: aws_lambda.Function,
-                 api: aws_apigateway.RestApi, *, env: Environment, create_dns: bool, 
+                 api: aws_apigateway.RestApi, *, backend_api_key: str = None, 
+                 env: Environment, create_dns: bool, 
                 zones: MakerspaceDns = None):
 
         super().__init__(scope, 'SharedApiGateway', env=env)
@@ -79,7 +80,11 @@ class SharedApiGateway(Stack):
 
         # Add an api key to the usage plan
         key_name: str = "SharedAPIAdminKey"
-        self.api_key = self.api.add_api_key(key_name)
+        self.api_key = self.api.add_api_key(
+                "SharedAPIKey",
+                api_key_name=key_name,
+                value=backend_api_key
+        )
         self.plan.add_api_key(self.api_key)
 
 

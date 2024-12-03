@@ -2,7 +2,8 @@
 from aws_cdk import (
     Stage,
     Stack,
-    Environment
+    Environment,
+    aws_secretsmanager
 )
 from constructs import Construct
 
@@ -44,14 +45,23 @@ class MakerspaceStack(Stack):
 
         self.database_stack()
 
-        self.visitors_stack()
+        # Get the api key value to use for backend api requests
+        secret_name: str = "SharedApiGatewayKey"
+        shared_gateway_secret = aws_secretsmanager.from_secret_name_v2(
+                self.app,
+                "SharedGatewaySecret",
+                secret_name
+        )
+        backend_api_key: str = str(shared_gateway_secret.secret_from_json("backend_api_key"))
+
+        self.visitors_stack(backend_api_key)
 
         self.backend_stack()
 
         if self.create_dns:
             self.dns_records_stack()
 
-        self.shared_api_gateway()
+        self.shared_api_gateway(backend_api_key=backend_api_key)
         
         self.cognito_setup()
         
@@ -87,14 +97,15 @@ class MakerspaceStack(Stack):
 
         self.add_dependency(self.database)
 
-    def visitors_stack(self):
+    def visitors_stack(self, backend_api_key: str = ""):
 
         self.visit = Visit(
             self.app,
             self.stage,
             create_dns=self.create_dns,
             zones=self.dns,
-            env=self.env
+            env=self.env,
+            backend_api_key=backend_api_key
         )
 
         self.add_dependency(self.visit)
@@ -114,7 +125,7 @@ class MakerspaceStack(Stack):
 
         self.add_dependency(self.backend_api)
 
-    def shared_api_gateway(self):
+    def shared_api_gateway(self, backend_api_key: str = ""):
 
         self.api_gateway = SharedApiGateway(
             self.app,
@@ -124,6 +135,7 @@ class MakerspaceStack(Stack):
             self.backend_api.lambda_qualifications_handler,
             self.backend_api.lambda_equipment_handler,
             api=self.dns.api,
+            backend_api_key=backend_api_key,
             env=self.env, zones=self.dns, create_dns=self.create_dns
         )
 
