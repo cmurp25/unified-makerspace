@@ -34,7 +34,8 @@ class Visit(Stack):
                  *,
                  env: Environment,
                  create_dns: bool,
-                 zones: MakerspaceDns = None):
+                 zones: MakerspaceDns = None,
+                 backend_api_key: str = ""):
 
         super().__init__(scope, 'Visitors', env=env)
         
