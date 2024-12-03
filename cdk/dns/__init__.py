@@ -6,7 +6,8 @@ from aws_cdk import (
     aws_apigateway,
     aws_cloudfront,
     aws_route53,
-    aws_route53_targets
+    aws_route53_targets,
+    aws_certificatemanager
 )
 from constructs import Construct
 
@@ -49,10 +50,11 @@ class MakerspaceDns(Stack):
     """
 
     def __init__(self, scope: Construct,
-                 stage: str, *, env: Environment):
+                 stage: str, create_dns: bool, *, env: Environment):
         super().__init__(scope, 'MakerspaceDns', env=env)
 
         self.domains = Domains(stage)
+        self.create_dns = create_dns
 
         self.visitors_zone()
         self.api_zone()
@@ -60,13 +62,15 @@ class MakerspaceDns(Stack):
         #! Should we remove these since we're not using them? 
         self.maintenance_zone()
         self.admin_zone()
+        
+        self.create_rest_api()
 
     def visitors_zone(self):
         self.visit = aws_route53.PublicHostedZone(self, 'visit',
                                                   zone_name=self.domains.visit)
 
     def api_zone(self):
-        self.api = aws_route53.PublicHostedZone(self, 'api',
+        self.api_hosted_zone = aws_route53.PublicHostedZone(self, 'api',
                                                 zone_name=self.domains.api)
 
     def maintenance_zone(self):
@@ -76,6 +80,28 @@ class MakerspaceDns(Stack):
     def admin_zone(self):
         aws_route53.PublicHostedZone(self, 'admin',
                                      zone_name=self.domains.admin)
+        
+    def create_rest_api(self):
+
+        # Create the Rest API
+        self.api = aws_apigateway.RestApi(self, 'SharedApiGateway')
+
+        # Handle dns integration
+        if self.create_dns:
+            # Depreciated way of making certificate
+            # certificate = aws_certificatemanager.DnsValidatedCertificate(self, 'ApiGatewayCert',
+            #                                                              domain_name=self.domains.api,
+            #                                                              hosted_zone=self.api)
+
+            certificate = aws_certificatemanager.Certificate(
+                self, 'ApiGatewayCert',
+                domain_name=self.domains.api,
+                validation=aws_certificatemanager.CertificateValidation.from_dns(self.api_hosted_zone)
+            )
+
+            self.api.add_domain_name('ApiGatewayDomainName',
+                                     domain_name=self.domains.api,
+                                     certificate=certificate)
 
 
 class MakerspaceDnsRecords(Stack):
@@ -103,22 +129,14 @@ class MakerspaceDnsRecords(Stack):
 
         zone = aws_route53.HostedZone.from_hosted_zone_attributes(self,
                                                                   'ApiHostedZoneRef',
-                                                                  hosted_zone_id=self.zones.api.hosted_zone_id,
-                                                                  zone_name=self.zones.api.zone_name)
+                                                                  hosted_zone_id=self.zones.api_hosted_zone.hosted_zone_id,
+                                                                  zone_name=self.zones.api_hosted_zone.zone_name)
 
-        # aws_route53.ARecord(self, 'ApiRecord',
-        #                     zone=zone,
-        #                     target=aws_route53.RecordTarget(
-        #                         alias_target=aws_route53_targets.ApiGatewayDomain(
-        #                             api_gateway.domain_name)))
-        
         aws_route53.ARecord(self, 'ApiRecord',
-                    zone=zone,
-                    target=aws_route53.RecordTarget.from_alias(
-                        aws_route53_targets.ApiGatewayDomain(
-                            domain_name=api_gateway.domain_name
-                        )
-                    ))
+                            zone=zone,
+                            target=aws_route53.RecordTarget(
+                                alias_target=aws_route53_targets.ApiGatewayDomain(
+                                    api_gateway.domain_name)))
 
     def visit_record(self, visit: aws_cloudfront.Distribution):
 

@@ -38,9 +38,9 @@ class MakerspaceStack(Stack):
 
         self.domains = Domains(self.stage)
 
-        self.hosted_zones_stack()
-
         self.create_dns = 'dev' not in self.domains.stage
+        
+        self.hosted_zones_stack()
 
         self.database_stack()
 
@@ -48,8 +48,16 @@ class MakerspaceStack(Stack):
 
         self.backend_stack()
 
-        self.cognito_setup()
+        if self.create_dns:
+            self.dns_records_stack()
 
+        self.shared_api_gateway()
+        
+        self.cognito_setup()
+        
+        # if self.stage.lower() == 'prod':
+        #     self.data_migration_stack()
+        
         # Set permissions for each lambda function to respective DDB table
         self.database.visits_table.grant_read_write_data(
             self.backend_api.lambda_visits_handler)
@@ -65,14 +73,6 @@ class MakerspaceStack(Stack):
         self.database.equipment_table.grant_read_write_data(self.backend_api.lambda_equipment_handler)
         
         self.database.qualifications_table.grant_read_write_data(self.backend_api.lambda_qualifications_handler)
-
-        self.shared_api_gateway()
-
-        if self.create_dns:
-            self.dns_records_stack()
-            
-        # if self.stage.lower() == 'prod':
-        #     self.data_migration_stack()
             
     # def data_migration_stack(self):
         
@@ -123,6 +123,7 @@ class MakerspaceStack(Stack):
             self.backend_api.lambda_visits_handler,
             self.backend_api.lambda_qualifications_handler,
             self.backend_api.lambda_equipment_handler,
+            api=self.dns.api,
             env=self.env, zones=self.dns, create_dns=self.create_dns
         )
 
@@ -130,7 +131,8 @@ class MakerspaceStack(Stack):
 
     def hosted_zones_stack(self):
 
-        self.dns = MakerspaceDns(self.app, self.stage, env=self.env)
+        self.dns = MakerspaceDns(self.app, self.stage, create_dns=self.create_dns, 
+                                 env=self.env)
 
         self.add_dependency(self.dns)
 
@@ -147,7 +149,7 @@ class MakerspaceStack(Stack):
             self.stage,
             env=self.env,
             zones=self.dns,
-            api_gateway=self.api_gateway.api,
+            api_gateway=self.dns.api,
             visit_distribution=self.visit.distribution
         )
 
