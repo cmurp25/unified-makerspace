@@ -52,16 +52,18 @@ class MakerspaceStack(Stack):
                 "SharedGatewaySecret",
                 secret_name
         )
-        backend_api_key: str = str(shared_gateway_secret.secret_from_json("backend_api_key"))
+        self.backend_api_key: str = str(shared_gateway_secret.secret_from_json("backend_api_key"))
 
-        self.visitors_stack(backend_api_key)
 
+        # Create the backend api and shared api gateway first to obtain an api url
         self.backend_stack()
 
         if self.create_dns:
             self.dns_records_stack()
 
-        self.shared_api_gateway(backend_api_key=backend_api_key)
+        self.shared_api_gateway()
+
+        self.visitors_stack()
         
         self.cognito_setup()
         
@@ -97,7 +99,7 @@ class MakerspaceStack(Stack):
 
         self.add_dependency(self.database)
 
-    def visitors_stack(self, backend_api_key: str = ""):
+    def visitors_stack(self):
 
         self.visit = Visit(
             self.app,
@@ -105,7 +107,8 @@ class MakerspaceStack(Stack):
             create_dns=self.create_dns,
             zones=self.dns,
             env=self.env,
-            backend_api_key=backend_api_key
+            backend_api_key=self.backend_api_key,
+            backend_api_url=self.api_gateway.url
         )
 
         self.add_dependency(self.visit)
@@ -125,7 +128,7 @@ class MakerspaceStack(Stack):
 
         self.add_dependency(self.backend_api)
 
-    def shared_api_gateway(self, backend_api_key: str = ""):
+    def shared_api_gateway(self):
 
         self.api_gateway = SharedApiGateway(
             self.app,
@@ -135,7 +138,7 @@ class MakerspaceStack(Stack):
             self.backend_api.lambda_qualifications_handler,
             self.backend_api.lambda_equipment_handler,
             api=self.dns.api,
-            backend_api_key=backend_api_key,
+            backend_api_key=self.backend_api_key,
             env=self.env, zones=self.dns, create_dns=self.create_dns
         )
 

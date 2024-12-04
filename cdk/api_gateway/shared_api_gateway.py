@@ -74,6 +74,9 @@ class SharedApiGateway(Stack):
         stage_name: str = f"{stage}"
         self.deploy_api_stage(stage_name)
 
+        # Add the stage to the api url
+        self.url += f"/{stage_name}"
+
         # Create a usage plan for the stage
         plan_name: str = "SharedAPIAdminPlan"
         self.create_usage_plan(plan_name)
@@ -96,6 +99,8 @@ class SharedApiGateway(Stack):
     #     # Handle dns integration
     #     if self.create_dns:
     #         domain_name = self.zones.api.zone_name
+    #         # Save the dns url
+    #         self.url: str = f"https://{domain_name}"
     #         certificate = aws_certificatemanager.DnsValidatedCertificate(self, 'ApiGatewayCert',
     #                                                                      domain_name=domain_name,
     #                                                                      hosted_zone=self.zones.api)
