@@ -6,10 +6,7 @@ import React, { useEffect } from "react";
 
 import Home from "./Home";
 import Registration from "./Registration";
-import SignInSuccess from "./SignInSuccess";
-import SignInError from "./SignInError";
 import NotFoundPage from "./NotFoundPage";
-import VisitForm from "../components/VisitForm";
 import Admin from "./Admin";
 import Qualifications from "./Qualifications";
 import EquipmentForm from "./EquipmentForm";
@@ -35,8 +32,6 @@ const App = () => {
         <Route path="/" element={<Home />} />
         <Route path="/register" element={<Registration />} />
         <Route path="/equipment_form" element={<EquipmentForm />} />
-        <Route path="/success" element={<SignInSuccess />} />
-        <Route path="/error" element={<SignInError />} />
         <Route path="*" element={<NotFoundPage />} />
 
         {/* Admin pages */}
@@ -44,18 +39,6 @@ const App = () => {
         <Route path="/qualifications" element={<Qualifications />} />
         <Route path="/equipment_usage" element={<EquipmentUsage />} />
         <Route path="/visits" element={<Visits />} />
-
-        {/* makerspace specific routes */}
-        {locations.map((location) => {
-          const { slug } = location;
-          return (
-            <Route
-              path={`/${slug}`}
-              key={slug}
-              element={<VisitForm location={location} />}
-            />
-          );
-        })}
       </Routes>
     </Router>
   );
