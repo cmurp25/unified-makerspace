@@ -8,6 +8,7 @@ import os
 import re
 from datetime import datetime
 from ..api_defaults import *
+from aws_cdk import Aws
 
 class VisitsHandler():
     """
@@ -42,8 +43,7 @@ class VisitsHandler():
             self.users_table = users_table
 
         if ses_client is None:
-            AWS_REGION = os.environ['AWS_REGION']
-            self.client = boto3.client('ses', region_name=AWS_REGION)
+            self.client = boto3.client('ses', region_name=Aws.REGION)
         else:
             self.client = ses_client
             

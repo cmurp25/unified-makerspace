@@ -76,8 +76,7 @@ class BackendApi(Stack):
             environment={
                 'DOMAIN_NAME': domain_name,
                 'VISITS_TABLE_NAME': visits_table_name,
-                'USERS_TABLE_NAME': users_table_name,
-                'AWS_REGION': self.region
+                'USERS_TABLE_NAME': users_table_name
             },
             handler='visits_handler.handler',
             runtime=aws_lambda.Runtime.PYTHON_3_12)

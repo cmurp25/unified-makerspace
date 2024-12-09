@@ -52,27 +52,26 @@ class MakerspaceStack(Stack):
 
         # Get the api key value to use for backend api requests
         secret_name: str = "SharedApiGatewayKey"
-        shared_gateway_secret = aws_secretsmanager.from_secret_name_v2(
-                self.app,
+        shared_gateway_secret = aws_secretsmanager.Secret.from_secret_name_v2(
+                self,
                 "SharedGatewaySecret",
                 secret_name
         )
-        self.backend_api_key: str = str(shared_gateway_secret.secret_from_json("backend_api_key"))
+        self.backend_api_key: str = str(shared_gateway_secret.secret_value_from_json("backend_api_key"))
 
-
+        
         self.cognito_setup()
-
+        
         # Create the backend api and shared api gateway first to obtain an api url
         self.backend_stack()
 
         self.shared_api_gateway()
+        
+        self.visitors_stack()
 
         if self.create_dns:
             self.dns_records_stack()
 
-        self.visitors_stack()
-        
-        self.cognito_setup()
         
         # if self.stage.lower() == 'prod':
         #     self.data_migration_stack()
@@ -167,12 +166,7 @@ class MakerspaceStack(Stack):
             self.backend_api.lambda_visits_handler,
             self.backend_api.lambda_qualifications_handler,
             self.backend_api.lambda_equipment_handler,
-<<<<<<< HEAD
-            backend_api_key=backend_api_key,
-=======
-            api=self.dns.api,
             backend_api_key=self.backend_api_key,
->>>>>>> 33d9c587 (Incorporated tiger training lambda into pipeline)
             env=self.env, zones=self.dns, create_dns=self.create_dns
         )
 

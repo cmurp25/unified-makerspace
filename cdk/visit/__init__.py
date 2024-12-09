@@ -67,8 +67,8 @@ class Visit(Stack):
         
         # Retrieve Bridge LMS key and secret
         secret_name: str = "BridgeLMSApiSecrets"
-        bridge_secrets = aws_secretsmanager.from_secret_name_v2(
-                scope, 
+        bridge_secrets = aws_secretsmanager.Secret.from_secret_name_v2(
+                self, 
                 "BridgeSecrets",
                 secret_name
         )

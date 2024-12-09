@@ -31,7 +31,7 @@ class Domains:
         
         # We current do not use these but they are partially setup.
         # If you want to use these, add a way to add A 
-        # records for these in cdk/visit/__init__.py
+        # records for these in the MakerspaceDnsRecords stack below.
         self.maintenance = self.domain('maintenance')
         self.admin = self.domain('admin')
 
