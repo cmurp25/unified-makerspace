@@ -205,7 +205,7 @@ class TestVisits():
     def test_get_all_visits_with_limit(self, get_visit_handler):
         """
         Tests for a successful response with a 'visits' field with a list
-        of objects. Checks that the number of items returned in less than
+        of objects. Checks that the number of items returned is less than
         or equal to the passed in limit.
         """
 

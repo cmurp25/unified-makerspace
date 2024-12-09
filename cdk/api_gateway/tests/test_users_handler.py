@@ -228,7 +228,7 @@ class TestUsers():
     def test_get_all_users_with_limit(self, get_user_handler):
         """
         Tests for a successful response with a 'users' field with a list
-        of objects. Checks that the number of items returned in less than
+        of objects. Checks that the number of items returned is less than
         or equal to the passed in limit.
         """
 

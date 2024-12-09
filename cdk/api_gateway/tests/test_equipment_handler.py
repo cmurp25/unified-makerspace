@@ -285,7 +285,7 @@ class TestEquipment():
     def test_get_all_equipment_with_limit(self, get_equipment_handler):
         """
         Tests for a successful response with a 'equipment_logs' field with a list
-        of objects. Checks that the number of items returned in less than
+        of objects. Checks that the number of items returned is less than
         or equal to the passed in limit.
         """
 
