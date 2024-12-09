@@ -162,7 +162,7 @@ class SharedApiGateway(Stack):
 
         # methods
         self.users.add_method('GET', users_handler, api_key_required=True)
-        self.users.add_method('POST', users_handler, api_key_required=True)
+        self.users.add_method('POST', users_handler)
     
 
     def route_users_user_id(self, users: aws_lambda.Function):
@@ -236,7 +236,7 @@ class SharedApiGateway(Stack):
 
         # methods
         self.equipment.add_method('GET', equipment, api_key_required=True)
-        self.equipment.add_method('POST', equipment, api_key_required=True)
+        self.equipment.add_method('POST', equipment)
         
     def route_equipment_user_id(self, equipment: aws_lambda.Function):
         
