@@ -69,9 +69,6 @@ class BackendApi(core.Stack):
         self.lambda_users_handler.role.add_to_policy(self.api_invoke_policy)
         self.lambda_qualifications_handler.role.add_to_policy(self.api_invoke_policy)
         self.lambda_equipment_handler.role.add_to_policy(self.api_invoke_policy)
-        
-        # Prepare lambda testing suite #! Must recreate testing
-        # self.test_api_lambda(env=stage)
 
     def visits_handler_lambda(self, visits_table_name: str, users_table_name: str, domain_name: str):
 
@@ -84,6 +81,7 @@ class BackendApi(core.Stack):
                 'DOMAIN_NAME': domain_name,
                 'VISITS_TABLE_NAME': visits_table_name,
                 'USERS_TABLE_NAME': users_table_name,
+                'AWS_REGION': self.region
             },
             handler='visits_handler.handler',
             runtime=aws_lambda.Runtime.PYTHON_3_9)
@@ -131,19 +129,4 @@ class BackendApi(core.Stack):
                 'EQUIPMENT_TABLE_NAME': equipment_table_name,
             },
             handler='equipment_handler.handler',
-            runtime=aws_lambda.Runtime.PYTHON_3_9)
-    
-    
-    #! Recreate Testing Lambda Function
-    def test_backend_api_lambda(self, env: str):
-
-        self.lambda_backend_api_test = aws_lambda.Function(
-            self,
-            'TestBackendAPILambda',
-            function_name=core.PhysicalName.GENERATE_IF_NEEDED,
-            code=aws_lambda.Code.from_asset('api_gateway/lambda_code/test_backend_api'),
-            environment={
-                'ENV': env
-            },
-            handler='test_api.handler',
             runtime=aws_lambda.Runtime.PYTHON_3_9)
