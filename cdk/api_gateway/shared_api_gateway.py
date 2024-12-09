@@ -7,6 +7,9 @@ from aws_cdk import (
     aws_apigateway,
     Aws
 )
+
+import boto3
+
 from constructs import Construct
 from dns import MakerspaceDns
 
@@ -82,11 +85,7 @@ class SharedApiGateway(Stack):
 
         # Add an api key to the usage plan
         key_name: str = "SharedAPIAdminKey"
-        self.api_key = self.api.add_api_key(
-                "SharedAPIKey",
-                api_key_name=key_name,
-                value=backend_api_key
-        )
+        self.get_api_key(key_name, backend_api_key)
         self.plan.add_api_key(self.api_key)
 
 
@@ -137,6 +136,39 @@ class SharedApiGateway(Stack):
             )
         )
 
+    def get_api_key(self, key_name: str, backend_api_key: str):
+        """
+        Sets an api_key to use for a usage plan. If the api key
+        already exists, use the existing one. Otherwise, create
+        a new api key
+        """
+        api_gateway_client = boto3.client('apigateway')
+
+        def api_key_exists(name) -> str:
+            response = api_gateway_client.get_api_keys(includeValues=False)
+            for api_key in response['items']:
+                if api_key['name'] == name:
+                    return api_key['id']
+            return ""
+
+        # Try getting an existing api key id
+        api_id: str = api_key_exists(key_name)
+
+        # Use old api key
+        if api_id:
+            self.api_key = aws_apigateway.ApiKey.from_api_key_id(
+                    self,
+                    "ShareApiKey",
+                    api_id
+            )
+
+        # Create new api key
+        else:
+            self.api_key = self.api.add_api_key(
+                    "SharedAPIKey",
+                    api_key_name=key_name,
+                    value=backend_api_key
+            )
 
     """
     Users:
