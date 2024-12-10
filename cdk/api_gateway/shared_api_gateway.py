@@ -101,6 +101,10 @@ class SharedApiGateway(Stack):
             handler="index.handler",
             code=aws_lambda.Code.from_inline("""
 import boto3
+import logging
+
+logger = logging.logger()
+logger.setLevel(logging.INFO)
 
 def handler(event, context):
     client = boto3.client('apigateway')
@@ -113,6 +117,7 @@ def handler(event, context):
                 return {'PhysicalResourceId': key['id'], 'Data': {'ApiKeyId': key['id']}}
         return {'PhysicalResourceId': 'None', 'Data': {'ApiKeyId': ""}}
     except Exception as e:
+        logger.info(e)
         raise Exception(f"Error retrieving API Key: {e}")
             """),
         )
