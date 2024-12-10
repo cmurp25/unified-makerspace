@@ -103,7 +103,7 @@ class SharedApiGateway(Stack):
 import boto3
 import logging
 
-logger = logging.logger()
+logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 def handler(event, context):
@@ -142,7 +142,7 @@ def handler(event, context):
         api_key_checker_function.add_to_role_policy(
             aws_iam.PolicyStatement(
                 actions=["apigateway:GetApiKeys"],
-                resources=["*"]  # Adjust resource scoping if necessary
+                resources=["/apiKeys/*"]  # Adjust resource scoping if necessary
             )
         )
 
