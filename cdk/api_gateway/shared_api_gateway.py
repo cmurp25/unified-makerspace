@@ -14,6 +14,7 @@ from aws_cdk import (
 
 import boto3
 import json
+from pathlib import Path
 
 from constructs import Construct
 from dns import MakerspaceDns
@@ -161,6 +162,33 @@ class SharedApiGateway(Stack):
 
         # Add the api key to the usage plan
         self.plan.add_api_key(self.api_key)
+
+        # WARNING:
+        # The following is a band-aid patch that should be fixed in the future.
+        # With the implementation of api key and the need for the STATIC frontend
+        # to be able to use the backend api, the need to statically store the
+        # backend api key is a thing. This, unfortunately, means that any method
+        # that requires the api key will visibly show this in network traffic.
+        # As such, while the frontend remains static, the api key should be used
+        # behind the Amplify login page to reduce the chance of security risk of
+        # leaking the key. This also means that the SharedAPIGateway stack MUST
+        # be created before the Visit stack to ensure the api key is written to
+        # the right location before the s3 bucket is deployed.
+
+        # Config filename
+        config_filename: str = "frontend.conf"
+
+
+        # Data to store
+        data: dict = { "BackendKey": backend_api_key }
+
+        # visitor-console directory to store the api key
+        # Assumes directory structure is cdk/api_gateway/shared_api_gateway.py and cdk/visit/console
+        config_path: Path = Path("../visit/console" / self.stage / config_filename)
+
+        # Write data as json to the file
+        with open(config_path) as outfile:
+            json.dump(data, outfile)
 
 
     def create_rest_api(self):
