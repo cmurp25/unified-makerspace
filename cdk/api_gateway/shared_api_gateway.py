@@ -15,6 +15,7 @@ from aws_cdk import (
 import boto3
 import json
 from pathlib import Path
+import os
 
 from constructs import Construct
 from dns import MakerspaceDns
@@ -176,19 +177,19 @@ class SharedApiGateway(Stack):
         # the right location before the s3 bucket is deployed.
 
         # Config filename
-        config_filename: str = "frontend.conf"
-
+        config_filename: str = ".env"
 
         # Data to store
-        data: dict = { "BackendKey": backend_api_key }
+        data: str = f"BACKEND_KEY={backend_api_key}"
 
-        # visitor-console directory to store the api key
-        # Assumes directory structure is cdk/api_gateway/shared_api_gateway.py and cdk/visit/console
-        config_path: Path = Path("../visit/console" / self.stage / config_filename)
+        # Path to the file to write the data to
+        # Assumes directory structure is cdk/visit/console/{stage_name} and the CWD
+        # is 'cdk'
+        config_path: Path = Path(f"{os.getcwd()}/visit/console/{stage_name}/{config_filename}")
 
-        # Write data as json to the file
-        with open(config_path) as outfile:
-            json.dump(data, outfile)
+        # Write data to the file
+        with open(config_path, "w") as outfile:
+            outfile.write(data)
 
 
     def create_rest_api(self):
@@ -242,16 +243,6 @@ class SharedApiGateway(Stack):
                 )
             ]
         )
-
-    def api_key_checker_lambda(self):
-        self.lambda_api_key_checker = aws_lambda.Function(
-            self,
-            'ApiKeyChecker',
-            function_name=PhysicalName.GENERATE_IF_NEEDED,
-            code=aws_lambda.Code.from_asset('api_gateway/lambda_code/api_key_checker'),
-            handler='api_key_checker.handler',
-            timeout=Duration.seconds(29),
-            runtime=aws_lambda.Runtime.PYTHON_3_12)
 
 
     """
@@ -422,3 +413,81 @@ class SharedApiGateway(Stack):
 
         # methods
         self.tiger_training.add_method('ANY', tiger_training, api_key_required=True)
+    
+
+    def api_key_checker_lambda(self):
+        #self.lambda_api_key_checker = aws_lambda.Function(
+        #    self,
+        #    'ApiKeyChecker',
+        #    function_name=PhysicalName.GENERATE_IF_NEEDED,
+        #    code=aws_lambda.Code.from_asset('api_gateway/lambda_code/api_key_checker'),
+        #    handler='api_key_checker.handler',
+        #    timeout=Duration.seconds(15),
+        #    runtime=aws_lambda.Runtime.PYTHON_3_12)
+
+        # Create a Lambda function to query for an API Key
+        self.lambda_api_key_checker = aws_lambda.Function(
+            self, "ApiKeyCheckerFunction",
+            runtime=aws_lambda.Runtime.PYTHON_3_12,
+            handler="index.handler",
+            timeout=Duration.seconds(15),
+            code=aws_lambda.Code.from_inline("""
+import boto3
+import logging
+import json
+import time
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+def delete_key(client, api_key_name: str) -> bool:
+
+    deleted_key: bool = False
+
+    response = client.get_api_keys(includeValues=False)
+
+    # Check for matching key name
+    for key in response['items']:
+        if key['name'] == api_key_name:
+
+            # Delete the key
+            try:
+                client.delete_api_key(apiKey=key['id'])
+                logger.info(f"Deleted key '{key['id']}'")
+                deleted_key = True
+            except Exception as e:
+                raise Exception(f"Error deleting API Key: {e}")
+
+    return deleted_key
+
+def handler(event, context):
+
+    logger.info("Event:")
+    logger.info(json.dumps(event, indent=2))
+    
+    try:
+        client = boto3.client('apigateway')
+
+        if 'ApiKeyName' not in event:
+            raise Exception("Missing 'ApiKeyName' from event input fields.")
+
+        api_key_name = event['ApiKeyName']
+
+        # Try and delete the key
+        delete_key(client, api_key_name)
+
+        # Wait 5 seconds for changes to propagate
+        time.sleep(5)
+
+        # Ensure key was deleted (delete_key should return False for no key deleted)
+        key_deleted: bool = delete_key(client, api_key_name)
+
+        if key_deleted:
+            raise Exception(f"Api key still existed after deleting first time.")
+
+        return {}
+
+    except Exception as e:
+        raise Exception(f"Error occurred: {e}")
+            """),
+        )
