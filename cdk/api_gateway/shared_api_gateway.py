@@ -222,7 +222,7 @@ class SharedApiGateway(Stack):
             function_name=PhysicalName.GENERATE_IF_NEEDED,
             code=aws_lambda.Code.from_asset('api_gateway/lambda_code/api_key_checker'),
             handler='api_key_checker.handler',
-            timeout=Duration(29),
+            timeout=Duration.seconds(29),
             runtime=aws_lambda.Runtime.PYTHON_3_12)
 
 
