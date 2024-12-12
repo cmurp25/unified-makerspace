@@ -7,7 +7,12 @@ import os
 import logging
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from ..api_defaults import *
+import sys
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.dirname(SCRIPT_DIR))
+
+from api_defaults import *
 
 class QualificationsHandler():
     def __init__(self, qualifications_table):
