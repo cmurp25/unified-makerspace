@@ -6,7 +6,8 @@ from aws_cdk import (
     aws_iam,
     aws_secretsmanager,
     PhysicalName,
-    Duration
+    Duration,
+    SecretValue
 )
 from constructs import Construct
 from dns import MakerspaceDns
@@ -72,6 +73,7 @@ class BackendApi(Stack):
         self.lambda_equipment_handler.role.add_to_policy(self.api_invoke_policy)
         self.lambda_tiger_training_handler.role.add_to_policy(self.api_invoke_policy)
 
+
     def visits_handler_lambda(self, visits_table_name: str, users_table_name: str, domain_name: str):
 
         self.lambda_visits_handler = aws_lambda.Function(
@@ -85,7 +87,7 @@ class BackendApi(Stack):
                 'USERS_TABLE_NAME': users_table_name
             },
             handler='visits_handler.handler',
-            timeout=Duration.seconds(29),
+            timeout=Duration.seconds(30),
             runtime=aws_lambda.Runtime.PYTHON_3_12)
 
     
@@ -101,7 +103,7 @@ class BackendApi(Stack):
                 'USERS_TABLE_NAME': users_table_name,
             },
             handler='users_handler.handler',
-            timeout=Duration.seconds(29),
+            timeout=Duration.seconds(30),
             runtime=aws_lambda.Runtime.PYTHON_3_12)
 
     
@@ -117,7 +119,7 @@ class BackendApi(Stack):
                 'QUALIFICATIONS_TABLE_NAME': qualifications_table_name,
             },
             handler='qualifications_handler.handler',
-            timeout=Duration.seconds(29),
+            timeout=Duration.seconds(30),
             runtime=aws_lambda.Runtime.PYTHON_3_12)
 
     
@@ -133,8 +135,9 @@ class BackendApi(Stack):
                 'EQUIPMENT_TABLE_NAME': equipment_table_name,
             },
             handler='equipment_handler.handler',
-            timeout=Duration.seconds(29),
+            timeout=Duration.seconds(30),
             runtime=aws_lambda.Runtime.PYTHON_3_12)
+
 
     def tiger_training_handler_lambda(self, backend_api_key: str, backend_api_url: str, domain_name: str):
 
@@ -145,8 +148,8 @@ class BackendApi(Stack):
                 "BridgeSecrets",
                 secret_name
         )
-        bridge_key: str = str(bridge_secrets.secret_value_from_json("key"))
-        bridge_secret: str = str(bridge_secrets.secret_value_from_json("secret"))
+        bridge_key: SecretValue = bridge_secrets.secret_value_from_json("key")
+        bridge_secret: SecretValue = bridge_secrets.secret_value_from_json("secret")
 
         bridge_url: str = "https://clemson.bridgeapp.com"
 
@@ -161,12 +164,12 @@ class BackendApi(Stack):
             environment={
                 'DOMAIN_NAME': domain_name,
                 'BRIDGE_URL': bridge_url,
-                'BRIDGE_KEY': bridge_key,
-                'BRIDGE_SECRET': bridge_secret,
+                'BRIDGE_KEY': bridge_key.to_string(),
+                'BRIDGE_SECRET': bridge_secret.to_string(),
                 'BRIDGE_PROGRAM_ID': makerspace_program_id,
                 'AWS_API_KEY': backend_api_key,
                 'AWS_API_URL': backend_api_url,
             },
             handler='equipment_handler.handler',
-            timeout=Duration.seconds(29),
+            timeout=Duration.seconds(30),
             runtime=aws_lambda.Runtime.PYTHON_3_12)

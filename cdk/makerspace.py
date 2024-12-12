@@ -178,7 +178,6 @@ class MakerspaceStack(Stack):
             self.backend_api.lambda_qualifications_handler,
             self.backend_api.lambda_equipment_handler,
             self.backend_api.lambda_tiger_training_handler,
-            backend_api_key=self.backend_api_key,
             env=self.env, zones=self.dns, create_dns=self.create_dns
         )
 
