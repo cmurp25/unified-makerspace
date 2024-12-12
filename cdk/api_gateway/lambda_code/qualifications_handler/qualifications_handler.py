@@ -180,9 +180,6 @@ class QualificationsHandler():
             body = { 'errorMsg': errorMsg }
             return buildResponse(statusCode = 400, body = body)
 
-        # Store the formatted current time in data['last_updated']
-        data['last_updated'] = datetime.now(ZoneInfo("America/New_York")).strftime(TIMESTAMP_FORMAT)
-
         # If 'trainings' not in data, store an empty list
         if 'trainings' not in data:
             data['trainings'] = []
