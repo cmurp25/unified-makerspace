@@ -36,8 +36,6 @@ class BackendApi(Stack):
                  qualifications_table_name: str,
                  *,
                  env: Environment,
-                 backend_api_key: str = "",
-                 backend_api_url: str = "",
                  zones: MakerspaceDns = None):
 
         super().__init__(scope, 'BackendApi', env=env)
@@ -54,11 +52,14 @@ class BackendApi(Stack):
         self.endpoint: str = "https://" + self.domain_name
 
         # Provision lambda functions
-        self.visits_handler_lambda(visits_table_name, users_table_name, ("https://" + self.domain_name))
-        self.users_handler_lambda(users_table_name, ("https://" + self.domain_name))
-        self.qualifications_handler_lambda(qualifications_table_name, ("https://" + self.domain_name))
-        self.equipment_handler_lambda(equipment_table_name, ("https://" + self.domain_name))
-        self.tiger_training_handler_lambda(backend_api_key, backend_api_url, ("https://" + self.domain_name))
+        self.visits_handler_lambda(visits_table_name, users_table_name, self.endpoint)
+        self.users_handler_lambda(users_table_name, self.endpoint)
+        self.qualifications_handler_lambda(qualifications_table_name, self.endpoint)
+        self.equipment_handler_lambda(equipment_table_name, self.endpoint)
+
+        # Tiger training handler depends on qualifications handler's function name.
+        # Create last to ensure this dependency is met.
+        self.tiger_training_handler_lambda(self.endpoint)
 
         # Create policy with AWSInvokeFullAccess actions - should work the same way
         self.api_invoke_policy = aws_iam.PolicyStatement(
@@ -139,7 +140,7 @@ class BackendApi(Stack):
             runtime=aws_lambda.Runtime.PYTHON_3_12)
 
 
-    def tiger_training_handler_lambda(self, backend_api_key: str, backend_api_url: str, domain_name: str):
+    def tiger_training_handler_lambda(self, domain_name: str):
 
         # Retrieve Bridge LMS key and secret
         secret_name: str = "BridgeLMSApiSecrets"
@@ -164,11 +165,10 @@ class BackendApi(Stack):
             environment={
                 'DOMAIN_NAME': domain_name,
                 'BRIDGE_URL': bridge_url,
-                'BRIDGE_KEY': bridge_key.to_string(),
-                'BRIDGE_SECRET': bridge_secret.to_string(),
+                'BRIDGE_KEY': bridge_key,
+                'BRIDGE_SECRET': bridge_secret,
                 'BRIDGE_PROGRAM_ID': makerspace_program_id,
-                'AWS_API_KEY': backend_api_key,
-                'AWS_API_URL': backend_api_url,
+                'QUALIFICATIONS_LAMBDA': self.lambda_qualifications_handler.function_name
             },
             handler='equipment_handler.handler',
             timeout=Duration.seconds(30),
