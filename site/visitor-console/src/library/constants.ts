@@ -89,11 +89,7 @@ export const locations = [
 
 export const genders = ["Male", "Female", "Other"];
 
-export const userPosition = [
-  "Undergraduate Student",
-  "Graduate Student",
-  "Faculty/Staff",
-];
+export const userPosition = ["Undergraduate", "Graduate", "Faculty"];
 
 export const gradsemesters = ["Fall", "Spring", "Summer"];
 
@@ -338,14 +334,7 @@ export const equipmentTypes = [
   "new thing",
 ];
 
-export const projectTypes = [
-  "Personal Project",
-  "Research Project",
-  "Class Assignment",
-  "Creative Inquiry",
-  "Senior Design",
-  "Club/Organization",
-];
+export const projectTypes = ["Personal", "Class", "Club"];
 
 export const surveryScores = [
   "10",
