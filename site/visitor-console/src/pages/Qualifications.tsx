@@ -56,8 +56,23 @@ const Qualifications = () => {
           );
         }
       } else {
-        const data: QualificationsObject = await response.json();
-        setQualifications(data);
+        const data = await response.json();
+
+        const transformItems = (items: any[]): CompletableItem[] =>
+          items.map((item) => ({
+            name: item.name,
+            completion_status: item.completion_status,
+          }));
+
+        const transformedQualifications: QualificationsObject = {
+          user_id: data.user_id,
+          last_updated: data.last_updated,
+          trainings: transformItems(data.trainings),
+          waivers: transformItems(data.waivers),
+          miscellaneous: transformItems(data.miscellaneous),
+        };
+
+        setQualifications(transformedQualifications);
       }
     } catch (error) {
       console.error(error);
@@ -187,6 +202,10 @@ const Qualifications = () => {
   );
 };
 
+export default Qualifications;
+
+/*
 export default withAuthenticator(Qualifications, {
   hideSignUp: true,
 });
+*/
