@@ -66,6 +66,7 @@ const Qualifications = () => {
       const response = await fetch(`${api_endpoint}/tiger_training`, {
         headers: {
           "Content-Type": "application/json",
+          "X-Api-Key": import.meta.env.VITE_BACKEND_KEY,
         },
       });
 
