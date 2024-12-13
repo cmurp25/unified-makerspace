@@ -112,7 +112,11 @@ class SharedApiGateway(Stack):
                     "X-Amz-Date",
                     "X-Api-Key",
                     "Accept",
+                    "Accept-Encoding",
                     "Origin",
+                    "Connection",
+                    "Host",
+                    "User-Agent",
                 ],
             ),
         )
