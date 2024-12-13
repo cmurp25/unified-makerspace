@@ -153,8 +153,6 @@ const Visits = () => {
   );
 };
 
-//export default Visits;
-
 export default withAuthenticator(Visits, {
   hideSignUp: true,
 });

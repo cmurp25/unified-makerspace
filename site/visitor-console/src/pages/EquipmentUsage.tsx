@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Footer from "../components/Footer";
 import { api_endpoint } from "../library/constants";
-//import { withAuthenticator } from "@aws-amplify/ui-react";
+import { withAuthenticator } from "@aws-amplify/ui-react";
 import { Link } from "react-router-dom";
 import EditModal from "../components/EditModal";
 
@@ -204,10 +204,6 @@ const EquipmentUsage = () => {
   );
 };
 
-export default EquipmentUsage;
-
-/*
-export default withAuthenticator(Qualifications, {
+export default withAuthenticator(EquipmentUsage, {
   hideSignUp: true,
 });
-*/
