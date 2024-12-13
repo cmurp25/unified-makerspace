@@ -8,7 +8,7 @@ export const format_date = (date: Date) => date.toISOString().split("T")[0];
 
 export const locations = [
   {
-    name: "Watt Family Innovation Center",
+    name: "Watt",
     tools: [
       "FDM 3D Printer (Plastic)",
       "SLA 3D Printer (Resin)",
@@ -45,7 +45,7 @@ export const locations = [
     sla_printers: ["Hopeful Terrier", "Inspiring Llama"],
   },
   {
-    name: "Cooper Library",
+    name: "Cooper",
     tools: [
       "FDM 3D Printer (Plastic)",
       "Button Maker",
@@ -82,7 +82,7 @@ export const locations = [
     ],
   },
   {
-    name: "CU ICAR",
+    name: "CUICAR",
     tools: ["Waterjet", "Visiting"],
   },
 ];
