@@ -65,9 +65,8 @@ class Pipeline(Stack):
                 'cd site/visitor-console',
                 'npm install',
 
+                # Add the backend key to the .env file in the visitor-console directory
                 f'echo "VITE_BACKEND_KEY={shared_api_key.to_string()}" > .env',
-                f'echo "VITE_BACKEND_KEY={shared_api_key.to_string()}" > src/.env',
-                f'echo "VITE_BACKEND_KEY={shared_api_key.to_string()}" > src/pages/.env',
  
                 # build for beta
                 f'VITE_API_ENDPOINT="https://{Domains("Beta").api}" npm run build',
