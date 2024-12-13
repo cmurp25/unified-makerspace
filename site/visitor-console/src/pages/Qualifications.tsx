@@ -48,7 +48,7 @@ const Qualifications = () => {
       );
 
       if (!response.ok) {
-        if (response.status === 404) {
+        if (response.status === 400) {
           setUserNotFound(true);
         } else {
           throw new Error(
@@ -106,6 +106,16 @@ const Qualifications = () => {
     }
   };
 
+  const isEmptyQualifications = (
+    qualifications: QualificationsObject
+  ): boolean => {
+    return (
+      qualifications.trainings.length === 0 &&
+      qualifications.waivers.length === 0 &&
+      qualifications.miscellaneous.length === 0
+    );
+  };
+
   return (
     <div
       className="container bg-primary p-5 rounded d-flex flex-column"
@@ -150,39 +160,43 @@ const Qualifications = () => {
         {loading ? (
           <p>Loading...</p>
         ) : qualifications ? (
-          <table className="table table-bordered table-primary">
-            <thead>
-              <tr>
-                <th className="text-center align-middle">Type</th>
-                <th className="text-center align-middle">Name</th>
-                <th className="text-center align-middle">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[
-                ...qualifications.trainings.map((training) => ({
-                  ...training,
-                  type: "Training",
-                })),
-                ...qualifications.waivers.map((waiver) => ({
-                  ...waiver,
-                  type: "Waiver",
-                })),
-                ...qualifications.miscellaneous.map((misc) => ({
-                  ...misc,
-                  type: "Miscellaneous",
-                })),
-              ].map((item, index) => (
-                <tr key={index}>
-                  <td className="text-center align-middle">{item.type}</td>
-                  <td className="text-center align-middle">{item.name}</td>
-                  <td className="text-center align-middle">
-                    {item.completion_status}
-                  </td>
+          isEmptyQualifications(qualifications) ? (
+            <p>No qualifications found for user {qualifications.user_id}.</p>
+          ) : (
+            <table className="table table-bordered table-primary">
+              <thead>
+                <tr>
+                  <th className="text-center align-middle">Type</th>
+                  <th className="text-center align-middle">Name</th>
+                  <th className="text-center align-middle">Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {[
+                  ...qualifications.trainings.map((training) => ({
+                    ...training,
+                    type: "Training",
+                  })),
+                  ...qualifications.waivers.map((waiver) => ({
+                    ...waiver,
+                    type: "Waiver",
+                  })),
+                  ...qualifications.miscellaneous.map((misc) => ({
+                    ...misc,
+                    type: "Miscellaneous",
+                  })),
+                ].map((item, index) => (
+                  <tr key={index}>
+                    <td className="text-center align-middle">{item.type}</td>
+                    <td className="text-center align-middle">{item.name}</td>
+                    <td className="text-center align-middle">
+                      {item.completion_status}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )
         ) : userNotFound ? (
           <p>No qualifications found for the specified user.</p>
         ) : (
