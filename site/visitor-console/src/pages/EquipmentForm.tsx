@@ -20,6 +20,19 @@ import {
   is3DPrinter,
 } from "../library/constants";
 
+// Used for transforming objects before POST to api
+const Printer3DInfoKeys = new Set([
+  "printer_name",
+  "print_name",
+  "print_duration",
+  "print_status",
+  "print_notes",
+  "print_mass",
+  "print_mass_estimate",
+  "resin_volume",
+  "resin_type",
+]);
+
 const stageSchemas = [
   // First stage - Initial Info
   yup.object({
@@ -28,45 +41,59 @@ const stageSchemas = [
     equipment_type: yup.string().required().label("Equipment Type"),
     equipment_history: yup.string().required().label("Equipment History"),
 
-    //// Printer fields with conditional validation
-    printer_3d_info: yup.object().when("equipment_type", {
+    // Printer fields with conditional validation
+    // These will be transformed into the appropriate printer_3d_info object
+    // before sending the full data object to the api.
+    printer_name: yup.string().when("equipment_type", {
       is: is3DPrinter,
-      then: yup
-        .object({
-          printer_name: yup.string().required().label("Printer Name"),
-          print_name: yup.string().required().label("Print Name"),
-          print_duration: yup.string().required().label("Print Duration"),
-          print_status: yup.string().default("In Progress"),
-          print_notes: yup.string().default(""),
+      then: yup.string().required().label("Printer Name"),
+      otherwise: yup.string().notRequired(),
+    }),
+    print_name: yup.string().when("equipment_type", {
+      is: is3DPrinter,
+      then: yup.string().required().label("Print Name"),
+      otherwise: yup.string().notRequired(),
+    }),
+    print_duration: yup.string().when("equipment_type", {
+      is: is3DPrinter,
+      then: yup.string().required().label("Print Duration"),
+      otherwise: yup.string().notRequired(),
+    }),
+    print_status: yup.string().when("equipment_type", {
+      is: is3DPrinter,
+      then: yup.string().default("In Progress"),
+      otherwise: yup.string().notRequired(),
+    }),
+    print_notes: yup.string().when("equipment_type", {
+      is: is3DPrinter,
+      then: yup.string().default(""),
+      otherwise: yup.string().notRequired(),
+    }),
 
-          // Specifically require estimated print mass when using plastic 3d printers
-          print_mass_estimate: yup.string().when("../equipment_type", {
-            is: FDM_PRINTER_STRING,
-            then: yup.string().required().label("Print Mass Estimate"),
-            otherwise: yup.string().notRequired(),
-          }),
+    // Specifically require estimated print mass when using plastic 3d printers
+    print_mass_estimate: yup.string().when("equipment_type", {
+      is: FDM_PRINTER_STRING,
+      then: yup.string().required().label("Print Mass Estimate"),
+      otherwise: yup.string().notRequired(),
+    }),
 
-          // Default print mass to the unknown value as the print hasn't finished
-          print_mass: yup.string().when("../equipment_type", {
-            is: FDM_PRINTER_STRING,
-            then: (schema) => schema.default(""),
-            otherwise: (schema) => schema.notRequired(),
-          }),
+    // Default print mass to the unknown value as the print hasn't finished
+    print_mass: yup.string().when("equipment_type", {
+      is: FDM_PRINTER_STRING,
+      then: (schema) => schema.default(""),
+      otherwise: (schema) => schema.notRequired(),
+    }),
 
-          // Specifically require resin volume and type when using resin 3d printers
-          resin_volume: yup.string().when("../equipment_type", {
-            is: SLA_PRINTER_STRING,
-            then: (schema) => schema.required().label("Resin Volume"),
-            otherwise: (schema) => schema.notRequired(),
-          }),
-          resin_type: yup.string().when("../equipment_type", {
-            is: SLA_PRINTER_STRING,
-            then: (schema) => schema.required().label("Resin Type"),
-            otherwise: (schema) => schema.notRequired(),
-          }),
-        })
-        .required(),
-      otherwise: yup.object().notRequired(),
+    // Specifically require resin volume and type when using resin 3d printers
+    resin_volume: yup.string().when("equipment_type", {
+      is: SLA_PRINTER_STRING,
+      then: (schema) => schema.required().label("Resin Volume"),
+      otherwise: (schema) => schema.notRequired(),
+    }),
+    resin_type: yup.string().when("equipment_type", {
+      is: SLA_PRINTER_STRING,
+      then: (schema) => schema.required().label("Resin Type"),
+      otherwise: (schema) => schema.notRequired(),
     }),
   }),
 
@@ -183,6 +210,7 @@ const EquipmentForm = () => {
   });
 
   const post_equipment_form = async (latestStageData): Promise<void> => {
+    // Compress the array of stage data into one object
     // Note: reduce() works as expected as long as all keys are unique.
     // It overwrites the same keys with the value of the last one evaluated.
     const allStageData = latestStageData.reduce(
@@ -190,39 +218,62 @@ const EquipmentForm = () => {
       {}
     );
 
+    // Transform data relating to 3d printers into a printer_3d_info object
+    const transformedData = Object.keys(allStageData).reduce(
+      (acc, key) => {
+        //console.log(`Checking key: ${key}`);
+        if (Printer3DInfoKeys.has(key)) {
+          acc.printer_3d_info[key] = allStageData[key]; // Move to "printer_3d_info"
+          console.log(`Adding value: ${allStageData[key]}`);
+          console.log(`Acc is now: ${JSON.stringify(acc, null, 2)}`);
+        } else {
+          acc[key] = allStageData[key]; // Keep other fields
+        }
+        return acc;
+      },
+      { printer_3d_info: {} } as Record<string, any>
+    );
+
+    // Remove the printer_3d_info key if the equipment_type is not a printer
+    // Currently guaranteed to have this field via the attempted transformation
+    // from above.
+    if (!is3DPrinter(transformedData.equipment_type)) {
+      delete transformedData.printer_3d_info;
+    }
+
     // Add the timestamp to the data
     const dataWithDefaults = {
-      ...allStageData,
+      ...transformedData,
       timestamp: new Date().toISOString().split(".")[0],
     };
     console.log("Form Submission:", JSON.stringify(dataWithDefaults, null, 2));
 
-    //try {
-    //  const response = await fetch(`${api_endpoint}/equipment`, {
-    //    method: "POST",
-    //    headers: {
-    //      "Content-Type": "application/json",
-    //    },
-    //    body: JSON.stringify(dataWithDefaults),
-    //  });
+    try {
+      const response = await fetch(`${api_endpoint}/equipment`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(dataWithDefaults),
+      });
 
-    //  if (response.ok) {
-    //    console.log(
-    //      "Data successfully sent to the API:",
-    //      await response.json()
-    //    );
-    //    navigate("/");
-    //  } else {
-    //    console.error(
-    //      "Failed to send data to the API:",
-    //      response.status,
-    //      await response.text()
-    //    );
-    //    console.log("Failed to submit the form.");
-    //  }
-    //} catch (error) {
-    //  console.error("An error occurred while submitting the form:", error);
-    //}
+      if (response.ok) {
+        console.log(
+          "Data successfully sent to the API:",
+          await response.json()
+        );
+        navigate("/");
+      } else {
+        console.error(
+          "Failed to send data to the API:",
+          response.status,
+          await response.text()
+        );
+        console.log("Failed to submit the form.");
+      }
+    } catch (error) {
+      console.error("An error occurred while submitting the form:", error);
+    }
   };
 
   return (
