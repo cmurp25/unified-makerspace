@@ -5,15 +5,15 @@ import { withAuthenticator } from "@aws-amplify/ui-react";
 import { Link } from "react-router-dom";
 
 // Define the type for a visit
-type Visit = {
+interface Visit {
   location: string;
   user_id: string;
   timestamp: string;
-};
+}
 
-type VisitResponse = {
-  visits: Visit[];
-};
+interface VisitLog extends Visit {
+  _ignore?: string;
+}
 
 const Visits = () => {
   const [searchUsername, setSearchUsername] = useState("");
@@ -39,9 +39,9 @@ const Visits = () => {
           throw new Error(`Error fetching visits: ${response.statusText}`);
         }
 
-        const data: VisitResponse = await response.json();
+        const data = await response.json();
         console.log(`Data received:\n${JSON.stringify(data, null, 2)}`);
-        const logs = Array.isArray(data.visits) ? data.visits : [];
+        const logs: VisitLog[] = Array.isArray(data.visits) ? data.visits : [];
 
         setVisits(logs);
       } catch (error: any) {
@@ -56,7 +56,7 @@ const Visits = () => {
     fetchVisits();
   }, []);
 
-  const appendLogs = (logs) => {
+  const appendLogs = (logs: VisitLog[]) => {
     setVisits((prevLogs) => {
       // Create a Map to ensure unique logs based on user_id and timestamp
       const logMap = new Map();
@@ -78,7 +78,7 @@ const Visits = () => {
     });
   };
 
-  const handleSearch = async (user_id) => {
+  const handleSearch = async (user_id: string) => {
     setLoading(true);
     setError(null);
     try {
@@ -99,9 +99,9 @@ const Visits = () => {
         );
       }
 
-      const data: VisitResponse = await response.json();
+      const data = await response.json();
       console.log(`Data received:\n${JSON.stringify(data, null, 2)}`);
-      const logs = Array.isArray(data.visits) ? data.visits : [];
+      const logs: VisitLog[] = Array.isArray(data.visits) ? data.visits : [];
 
       appendLogs(logs);
     } catch (error) {
@@ -127,9 +127,9 @@ const Visits = () => {
         throw new Error(`Error fetching visits: ${response.statusText}`);
       }
 
-      const data: VisitResponse = await response.json();
+      const data = await response.json();
       console.log(`Data received:\n${JSON.stringify(data, null, 2)}`);
-      const logs = Array.isArray(data.visits) ? data.visits : [];
+      const logs: VisitLog[] = Array.isArray(data.visits) ? data.visits : [];
 
       appendLogs(logs);
     } catch (error) {

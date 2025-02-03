@@ -36,9 +36,10 @@ const EquipmentUsage = () => {
 
         const data = await response.json();
         console.log(`Data received:\n${JSON.stringify(data, null, 2)}`);
-        const logs = Array.isArray(data.equipment_logs)
+        const logs: EquipmentLog[] = Array.isArray(data.equipment_logs)
           ? data.equipment_logs
           : [];
+
         setEquipmentLogs(logs);
       } catch (error) {
         console.error("Error fetching equipment logs:", error);
@@ -108,7 +109,7 @@ const EquipmentUsage = () => {
     }
   };
 
-  const appendLogs = (logs) => {
+  const appendLogs = (logs: EquipmentLog[]) => {
     setEquipmentLogs((prevLogs) => {
       // Create a Map to ensure unique logs based on user_id and timestamp
       const logMap = new Map();
@@ -130,7 +131,7 @@ const EquipmentUsage = () => {
     });
   };
 
-  const handleSearch = async (user_id) => {
+  const handleSearch = async (user_id: string) => {
     setLoading(true);
     setError(null);
     try {
@@ -153,7 +154,7 @@ const EquipmentUsage = () => {
 
       const data = await response.json();
       console.log(`Data received:\n${JSON.stringify(data, null, 2)}`);
-      const logs = Array.isArray(data.equipment_logs)
+      const logs: EquipmentLog[] = Array.isArray(data.equipment_logs)
         ? data.equipment_logs
         : [];
 
@@ -185,7 +186,7 @@ const EquipmentUsage = () => {
 
       const data = await response.json();
       console.log(`Data received:\n${JSON.stringify(data, null, 2)}`);
-      const logs = Array.isArray(data.equipment_logs)
+      const logs: EquipmentLog[] = Array.isArray(data.equipment_logs)
         ? data.equipment_logs
         : [];
 

@@ -209,7 +209,7 @@ const EquipmentForm = () => {
     }
   });
 
-  const post_equipment_form = async (latestStageData): Promise<void> => {
+  const post_equipment_form = async (latestStageData: any[]): Promise<void> => {
     // Compress the array of stage data into one object
     // Note: reduce() works as expected as long as all keys are unique.
     // It overwrites the same keys with the value of the last one evaluated.
